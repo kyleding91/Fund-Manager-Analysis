@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}A quarterly screen of value-oriented, concentrated institutional managers, built from SEC EDGAR 13F filings.{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="{{ root }}assets/style.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="container masthead-inner">
+    <a class="brand" href="{{ root }}index.html">
+      <span class="brand-mark">VF</span>
+      <span class="brand-name">Value Flow</span>
+    </a>
+    <nav class="nav">
+      <a href="{{ root }}index.html" class="{{ 'active' if active=='home' }}">Overview</a>
+      <a href="{{ root }}funds.html" class="{{ 'active' if active=='funds' }}">Managers</a>
+      <a href="{{ root }}stocks.html" class="{{ 'active' if active=='stocks' }}">Most-held stocks</a>
+      <a href="{{ root }}methodology.html" class="{{ 'active' if active=='methodology' }}">Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>
+      <strong>{{ site_name }}</strong>
+      <p class="muted">Data sourced from <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=13F" rel="noopener">SEC EDGAR 13F filings</a>.
+      Latest quarter: <strong>{{ quarter }}</strong>{% if freshness.loaded %} · data loaded {{ freshness.loaded }}{% endif %} · site built {{ freshness.generated }}.</p>
+    </div>
+    <p class="muted disclaimer">For informational purposes only. Not investment advice. 13F filings are
+    disclosed up to 45 days after quarter-end, cover long U.S.-listed positions only, and exclude short
+    positions and most derivatives. Figures are aggregated from public filings and may contain errors.</p>
+  </div>
+</footer>
+</body>
+</html>

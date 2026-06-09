@@ -1,0 +1,15 @@
+# Brand theme for the 13F Fund Tracker.
+# A calm, finance-desk palette: deep ink navy + a single emerald accent.
+[theme]
+base = "light"
+primaryColor = "#0E7C66"          # emerald accent (buttons, sliders, highlights)
+backgroundColor = "#FBFAF7"       # warm off-white page
+secondaryBackgroundColor = "#F0EEE8"  # cards / sidebar
+textColor = "#1A2B3C"             # ink navy
+font = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

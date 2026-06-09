@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Project data: the multi-GB raw filings cache stays out of git, but the small
+# SQLite database IS tracked so the scheduled CI job can add each new quarter to
+# it incrementally instead of re-scanning years of SEC filings every run.
+data/raw/
+data/*.db
+data/*.log
+!data/13f.db
+
+# Generated static website (rebuilt by CI and published to GitHub Pages)
+site/
+
+# OS
+.DS_Store

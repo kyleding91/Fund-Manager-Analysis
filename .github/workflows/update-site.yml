@@ -1,0 +1,112 @@
+name: Update 13F site
+
+# What this does, in plain English:
+#   1. A few times around each quarterly 13F deadline (and any time you click
+#      "Run workflow"), GitHub checks the SEC for the newest quarter of filings.
+#   2. It loads that quarter into the small database file kept in this repo and
+#      commits the updated database back.
+#   3. It rebuilds the static website and publishes it to GitHub Pages.
+# You don't have to run anything on your computer — GitHub does it all for free.
+
+on:
+  # 13F filings are due ~45 days after each quarter ends, i.e. mid Feb / May /
+  # Aug / Nov. We wake up on the 16th, 23rd and 28th of those months at 08:00 UTC
+  # to catch the initial wave plus late and amended filings.
+  schedule:
+    - cron: "0 8 16,23,28 2,5,8,11 *"
+  # Lets you trigger a run by hand from the Actions tab whenever you want.
+  workflow_dispatch:
+    inputs:
+      quarter:
+        description: "Optional holdings quarter to load, e.g. 2026Q1 (blank = latest available)"
+        required: false
+        default: ""
+
+# Don't let two scheduled runs collide.
+concurrency:
+  group: update-site
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to commit the refreshed database back to the repo
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Load the latest quarter from SEC EDGAR
+        env:
+          # Optional: set a repo secret named SEC_CONTACT_EMAIL to override the
+          # default contact address used in the SEC User-Agent header.
+          SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
+        run: |
+          if [ -n "${{ github.event.inputs.quarter }}" ]; then
+            python ingest.py --quarter "${{ github.event.inputs.quarter }}"
+          else
+            # Load the single most-recent available quarter. Re-running on a
+            # quarter that's already loaded just refreshes it (idempotent).
+            python ingest.py --backfill 1
+          fi
+
+      - name: Backfill full history for the screened universe
+        env:
+          SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
+        run: |
+          # Any manager that qualifies in a tracked quarter gets its holdings for
+          # every tracked quarter, so deep-dive timelines and QoQ moves stay
+          # continuous. --backfill-only reuses the committed screen ledger, so
+          # this only downloads the universe's filings (not every 13F again).
+          python rebuild_universe.py --backfill-only
+
+      - name: Show database stats
+        run: python ingest.py --stats || true
+
+      - name: Build the static website
+        run: python build_site.py --out site
+
+      - name: Commit the refreshed database
+        id: commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f data/13f.db
+          if git diff --staged --quiet; then
+            echo "No database changes to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "data: refresh 13F database ($(date -u +%Y-%m-%d))"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload the site as a Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Publish to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

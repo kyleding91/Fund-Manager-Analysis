@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ f.manager_name }} — 13F holdings{% endblock %}
+{% block description %}{{ f.manager_name }} 13F holdings and quarter-over-quarter moves across the last {{ f.quarters|length }} reported quarters, built from SEC EDGAR filings.{% endblock %}
+{% block content %}
+
+<a class="backlink" href="{{ root }}funds.html">&larr; All managers</a>
+<div class="fund-head">
+  <h1>{{ f.manager_name }}</h1>
+  <span class="badge {{ 'gray' if f.category != 'Investment Manager' }}">{{ f.emoji }} {{ f.category }}</span>
+</div>
+
+{% if f.aum_svg %}
+<section class="section">
+  <h2>Assets under management over time</h2>
+  <p class="section-sub">13F AUM for each quarter this manager passed the screen ({{ f.num_quarters_total }} on record).</p>
+  <div class="card spark">
+    <svg viewBox="0 0 {{ f.aum_svg.width }} {{ f.aum_svg.height }}" width="{{ f.aum_svg.width }}" height="{{ f.aum_svg.height }}" role="img" aria-label="AUM over time">
+      <polyline class="line" points="{{ f.aum_svg.polyline }}"></polyline>
+      {% for d in f.aum_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }}</title></circle>{% endfor %}
+      <text class="axislab" x="{{ f.aum_svg.dots[0].x }}" y="{{ f.aum_svg.height - 6 }}">{{ f.aum_svg.first_label }}</text>
+      <text class="axislab" x="{{ f.aum_svg.width - 8 }}" y="{{ f.aum_svg.height - 6 }}" text-anchor="end">{{ f.aum_svg.last_label }}</text>
+    </svg>
+  </div>
+</section>
+{% endif %}
+
+<section class="section" id="quarter-view">
+  <h2>Portfolio by quarter</h2>
+  <p class="section-sub">Pick a quarter to see that filing's holdings and what changed since the quarter before.</p>
+  {% if f.quarters|length > 1 %}
+  <div class="chips qselect" id="quarter-chips">
+    {% for q in f.quarters %}
+    <button type="button" class="chip {{ 'on' if loop.first }}{{ ' off-screen' if not q.meets_criteria }}" data-q="{{ q.slug }}"{% if not q.meets_criteria %} title="Shown for history — did not meet the selection criteria this quarter"{% endif %}>{{ q.quarter }}{% if not q.meets_criteria %} <span class="dot-off">○</span>{% endif %}</button>
+    {% endfor %}
+  </div>
+  <p class="section-sub">○ marks quarters shown for history where the manager didn't meet the selection criteria ({{ criteria.min_aum_b }}B+ AUM and either &le;{{ criteria.max_holdings }} issuers or top {{ criteria.top_n }} &ge; {{ criteria.top_n_min_pct }}% of AUM).</p>
+  {% endif %}
+
+  {% for q in f.quarters %}
+  <div class="qpanel" data-q="{{ q.slug }}"{% if not loop.first %} hidden{% endif %}>
+
+    <div class="statline">
+      <div class="s"><div class="label">13F AUM</div><div class="value">{{ q.aum }}</div></div>
+      <div class="s"><div class="label">Companies</div><div class="value">{{ q.num_issuers }}</div></div>
+      <div class="s"><div class="label">Positions</div><div class="value">{{ q.num_positions }}</div></div>
+      <div class="s"><div class="label">Top {{ criteria.top_n }} weight</div><div class="value">{{ q.top_n_pct }}</div></div>
+      <div class="s"><div class="label">Filed</div><div class="value" style="font-size:18px;">{{ q.date_filed }} · {{ q.form_type }}</div></div>
+    </div>
+
+    {% if not q.meets_criteria %}
+    <p class="callout">Shown for history. This manager didn't meet the selection criteria in {{ q.quarter }} ({{ q.num_issuers }} issuers; top {{ criteria.top_n }} positions were {{ q.top_n_pct }} of AUM), so it isn't counted in this quarter's screened universe — but its filing is kept so the timeline and quarter-over-quarter moves stay continuous.</p>
+    {% endif %}
+
+    <h3 class="qsub">Holdings &mdash; {{ q.quarter }}</h3>
+    <p class="section-sub">{{ q.num_positions }} reported positions, largest first.{% if q.sec_url %}
+      &nbsp;·&nbsp;<a href="{{ q.sec_url }}" target="_blank" rel="noopener">View original {{ q.form_type }} filing on SEC EDGAR&nbsp;↗</a>{% endif %}</p>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th class="no-sort">Company</th><th class="no-sort">Class</th><th class="no-sort num">Value</th><th class="no-sort num">Shares</th><th class="no-sort">% of portfolio</th></tr></thead>
+        <tbody>
+          {% for h in q.holdings %}
+          <tr>
+            <td>{{ h.issuer }}{% if h.put_call %} <span class="badge gray">{{ h.put_call }}</span>{% endif %}</td>
+            <td class="muted">{{ h.title }}</td>
+            <td class="num">{{ h.value }}</td>
+            <td class="num">{{ h.shares }}</td>
+            <td>
+              <div class="pctcell"><span class="track"><span class="fill" style="width: {{ h.width }}%"></span></span><span class="lab">{{ h.pct }}</span></div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="qsub">Quarter-over-quarter moves &mdash; {{ q.quarter }}</h3>
+    {% if q.moves %}
+    <p class="section-sub">Changes in share count versus {{ q.prev_quarter }} — what the manager actually bought or sold.</p>
+    <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+      {% for c in q.moves.counts %}
+      <div class="kpi"><div class="label">{{ c.emoji }} {{ c.kind|capitalize }}</div><div class="value">{{ c.n }}</div></div>
+      {% endfor %}
+    </div>
+    {% if q.moves.rows %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th class="no-sort">Company</th><th class="no-sort">Change</th><th class="no-sort num">Value now</th><th class="no-sort num">Value before</th><th class="no-sort num">&Delta; Value</th></tr></thead>
+        <tbody>
+          {% for m in q.moves.rows %}
+          <tr>
+            <td>{{ m.issuer }}</td>
+            <td><span class="chg chg-{{ m.change_type }}">{{ m.emoji }} {{ m.change_type|capitalize }}</span></td>
+            <td class="num">{{ m.now }}</td>
+            <td class="num">{{ m.was }}</td>
+            <td class="num {{ 'delta-pos' if m.delta_val > 0 else 'delta-neg' if m.delta_val < 0 }}">{{ m.delta }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">No position changes versus {{ q.prev_quarter }} — the portfolio was held steady.</p>
+    {% endif %}
+    {% else %}
+    <p class="callout">This is the earliest quarter on record for this manager, so there's no prior filing to compare against yet. As new quarters load, moves will appear here.</p>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+</section>
+
+<script src="{{ root }}assets/app.js"></script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Managers — {{ site_name }} ({{ quarter }}){% endblock %}
+{% block content %}
+
+<section class="hero" style="padding:40px 0 20px;">
+  <div class="eyebrow">Directory · {{ quarter }}</div>
+  <h1>Screened managers</h1>
+  <p class="lede">Every institution passing the screen this quarter. Search, sort, and filter by type;
+  click any name for its full portfolio and quarter-over-quarter moves.</p>
+</section>
+
+<div class="toolbar">
+  <input type="search" id="fund-search" placeholder="Search manager name…" aria-label="Search managers">
+  <div class="chips" id="type-chips">
+    <span class="chip on" data-cat="Investment Manager">💼 Managers</span>
+    <span class="chip" data-cat="__all__">All filer types</span>
+  </div>
+</div>
+<p class="count-note"><span id="row-count">0</span> shown · <a href="{{ root }}data/managers-{{ quarter_slug }}.csv">Download CSV</a></p>
+
+<div class="table-wrap">
+  <table class="data" id="funds-table">
+    <thead>
+      <tr>
+        <th data-sort="text" data-key="name">Manager <span class="arrow">▾</span></th>
+        <th data-sort="text" data-key="type" class="">Type <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="aum" class="num">AUM <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="iss" class="num"># Holdings <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="pos" class="num"># Positions <span class="arrow">▾</span></th>
+        <th data-sort="text" data-key="filed" class="num">Filed <span class="arrow">▾</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in funds %}
+      <tr data-name="{{ f.manager_name|lower }}" data-cat="{{ f.category }}"
+          data-aum="{{ f.aum_usd }}" data-iss="{{ f.num_issuers }}"
+          data-pos="{{ f.num_positions }}" data-filed="{{ f.date_filed }}">
+        <td><a href="{{ root }}funds/{{ f.cik }}.html">{{ f.manager_name }}</a></td>
+        <td><span class="badge {{ 'gray' if not f.is_manager }}">{{ f.emoji }} {{ f.category }}</span></td>
+        <td class="num">{{ f.aum }}</td>
+        <td class="num">{{ f.num_issuers }}</td>
+        <td class="num">{{ f.num_positions }}</td>
+        <td class="num">{{ f.date_filed }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script src="{{ root }}assets/app.js"></script>
+{% endblock %}

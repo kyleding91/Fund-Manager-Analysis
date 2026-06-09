@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Most-held stocks — {{ site_name }} ({{ quarter }}){% endblock %}
+{% block content %}
+
+<section class="hero" style="padding:40px 0 20px;">
+  <div class="eyebrow">Conviction · {{ quarter }}</div>
+  <h1>Most-held stocks</h1>
+  <p class="lede">The companies owned by the most screened managers this quarter. A stock held by many
+  concentrated, value-oriented investors is a strong conviction signal.</p>
+</section>
+
+<div class="toolbar">
+  <input type="search" id="fund-search" placeholder="Search company…" aria-label="Search stocks">
+</div>
+<p class="count-note"><span id="row-count">0</span> shown</p>
+
+<div class="table-wrap">
+  <table class="data" id="funds-table">
+    <thead>
+      <tr>
+        <th data-sort="text" data-key="name">Company <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="funds" class="num sorted-desc"># Managers holding <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="value" class="num">Combined value <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="pct" class="num">Avg % of portfolio <span class="arrow">▾</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in stocks %}
+      <tr data-name="{{ s.issuer|lower }}" data-cat="__all__"
+          data-funds="{{ s.num_funds }}" data-value="{{ s.total_value_usd }}" data-pct="{{ s.avg_pct_val }}">
+        <td>{{ s.issuer }}</td>
+        <td class="num">{{ s.num_funds }}</td>
+        <td class="num">{{ s.total_value }}</td>
+        <td class="num">{{ s.avg_pct }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script src="{{ root }}assets/app.js"></script>
+{% endblock %}

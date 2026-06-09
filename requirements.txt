@@ -1,0 +1,7 @@
+# 13F Fund Tracker dependencies
+requests>=2.31      # download filings from SEC EDGAR
+lxml>=4.9           # robust XML parsing of filings
+pandas>=2.0         # tabular data handling
+streamlit>=1.30     # local web dashboard
+altair>=5.0         # charts in the dashboard
+jinja2>=3.1         # render the static website templates (build_site.py)

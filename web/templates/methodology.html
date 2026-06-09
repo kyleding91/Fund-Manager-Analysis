@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Methodology — {{ site_name }}{% endblock %}
+{% block content %}
+
+<section class="hero" style="padding:40px 0 20px;">
+  <div class="eyebrow">About the data</div>
+  <h1>Methodology</h1>
+  <p class="lede">How this screen is built, what it includes, and the limitations you should keep in mind.</p>
+</section>
+
+<div class="prose">
+  <h2>The screen</h2>
+  <p>Every quarter we read all Form 13F filings from SEC EDGAR and keep only institutions that are
+  large <em>and</em> concentrated, to isolate high-conviction, value-oriented managers. A filing
+  qualifies when it has:</p>
+  <ul>
+    <li><strong>More than ${{ criteria.min_aum_b }}&nbsp;billion</strong> in disclosed 13F assets, <strong>and</strong></li>
+    <li>is concentrated by <strong>either</strong> measure:
+      <ul>
+        <li><strong>{{ criteria.max_holdings }} or fewer distinct companies</strong> held, <strong>or</strong></li>
+        <li>its <strong>top {{ criteria.top_n }} positions make up at least {{ criteria.top_n_min_pct }}%</strong> of disclosed AUM.</li>
+      </ul>
+    </li>
+  </ul>
+  <div class="callout">A large book paired with either a short holdings list or a heavy top-10
+  weighting is the signature of a manager who concentrates capital in their best ideas, rather than
+  indexing broadly. The second test catches managers who carry a long tail of tiny positions but
+  still run a genuinely concentrated portfolio.</div>
+
+  <h2>Manager deep-dives keep full history</h2>
+  <p>Whether a manager qualifies can change from quarter to quarter — a book can drift just over or
+  under the holdings line. Once a manager qualifies in <em>any</em> of the recent quarters we track,
+  we keep its filings for <em>all</em> of those quarters so each deep-dive shows a continuous timeline
+  and accurate quarter-over-quarter moves. Quarters where the manager didn't meet the criteria are
+  clearly marked (with a ○) and are excluded from that quarter's screened universe and rankings.</p>
+
+  <h2>Filer types</h2>
+  <p>13F filings come from many kinds of institutions, not just stock-pickers — pensions, sovereign
+  wealth funds, university endowments, foundations, insurers, banks, market-makers, and operating
+  companies holding strategic stakes all file. We label each filer by type using a transparent,
+  name-based heuristic so you can focus on genuine <em>investment managers</em> and filter the rest out.
+  The heuristic is approximate; corrections are welcome.</p>
+
+  <h2>How figures are computed</h2>
+  <ul>
+    <li><strong>AUM</strong> is the sum of a filer's disclosed long positions. Filings that report values
+    in thousands (before 2023) are normalized to whole dollars.</li>
+    <li><strong>Holdings</strong> are aggregated by company (the first six CUSIP digits), so multiple share
+    classes or shared-discretion rows collapse into one position.</li>
+    <li><strong>Quarter-over-quarter moves</strong> compare share counts against the manager's previous
+    screened quarter, classifying each position as new, added, trimmed, or exited.</li>
+    <li><strong>Amended filings</strong> (13F-HR/A) supersede the original for that period.</li>
+  </ul>
+
+  <h2>Update cadence</h2>
+  <p>13F filings are due 45 days after each quarter-end. Shortly after each deadline
+  (mid-February, May, August, and November) the site automatically ingests the new quarter and rebuilds.</p>
+
+  <h2>Limitations</h2>
+  <ul>
+    <li>13F discloses <strong>long U.S.-listed positions only</strong> — no short positions, cash, non-U.S.
+    listings, or most derivatives.</li>
+    <li>Data is reported with up to a <strong>45-day lag</strong>, so it is not real-time.</li>
+    <li>Managers may obtain <strong>confidential treatment</strong> to omit holdings; such filings are
+    excluded from the screen rather than counted as concentrated.</li>
+    <li>Figures are parsed from public filings and may contain errors.</li>
+  </ul>
+
+  <div class="callout"><strong>Not investment advice.</strong> This site is for informational and
+  educational purposes only. Always do your own research.</div>
+</div>
+{% endblock %}

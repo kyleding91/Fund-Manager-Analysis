@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} — value-oriented 13F managers, {{ quarter }}{% endblock %}
+{% block content %}
+
+<section class="hero">
+  <div class="eyebrow">SEC 13F screen · {{ quarter }}</div>
+  <h1>Where concentrated, value-oriented capital is invested</h1>
+  <p class="lede">A quarterly screen of institutional managers reporting more than $2&nbsp;billion in U.S.
+  equity holdings across fewer than 30 companies — the high-conviction end of the 13F universe. Built
+  automatically from public SEC filings.</p>
+</section>
+
+<section class="section">
+  <div class="kpis">
+    <div class="kpi">
+      <div class="label">Investment managers</div>
+      <div class="value">{{ u.num_managers }}</div>
+      <div class="sub">{{ u.num_filers }} screened filers in total</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Managers' assets</div>
+      <div class="value">{{ u.manager_aum }}</div>
+      <div class="sub">{{ u.total_aum }} across all filers</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Median holdings</div>
+      <div class="value">{{ u.median_issuers }}</div>
+      <div class="sub">distinct companies per manager</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Disclosed positions</div>
+      <div class="value">{{ "{:,}".format(u.total_positions) }}</div>
+      <div class="sub">across the screened universe</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="grid-2">
+    <div class="card">
+      <h3>Who passes the screen</h3>
+      <p class="hint">Filer types — most are genuine stock-pickers; the rest are filtered out on the Managers page.</p>
+      <div class="barlist">
+        {% for m in u.type_mix %}
+        <div class="barrow">
+          <span class="name">{{ m.emoji }} {{ m.label }}</span>
+          <span class="track"><span class="fill {{ 'navy' if m.category != 'Investment Manager' }}" style="width: {{ m.width }}%"></span></span>
+          <span class="val">{{ m.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <h3>Assets under management</h3>
+      <p class="hint">Distribution of 13F AUM across the screened universe.</p>
+      <div class="histogram">
+        {% for b in u.aum_hist %}
+        <div class="histobar">
+          <span class="n">{{ b.count }}</span>
+          <span class="col" style="height: {{ b.height }}%"></span>
+          <span class="x">{{ b.label }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="grid-2">
+    <div class="card">
+      <h3>Portfolio concentration</h3>
+      <p class="hint">Number of distinct companies held (the screen caps this below 30).</p>
+      <div class="histogram">
+        {% for b in u.issuer_hist %}
+        <div class="histobar">
+          <span class="n">{{ b.count }}</span>
+          <span class="col navy" style="height: {{ b.height }}%"></span>
+          <span class="x">{{ b.label }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <h3>Highest single-position conviction</h3>
+      <p class="hint">Largest holding as a share of the manager's portfolio.</p>
+      <div class="barlist">
+        {% for c in u.top_concentration[:8] %}
+        <div class="barrow">
+          <span class="name"><a href="{{ root }}funds/{{ c.cik }}.html">{{ c.manager_name }}</a></span>
+          <span class="track"><span class="fill" style="width: {{ c.top_pct_val }}%"></span></span>
+          <span class="val">{{ c.top_pct }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Most-held stocks</h2>
+  <p class="section-sub">The companies owned by the most screened managers this quarter — a conviction signal.
+  <a href="{{ root }}stocks.html">See all &rarr;</a></p>
+  <div class="card">
+    <div class="barlist">
+      {% for s in u.most_held[:12] %}
+      <div class="barrow">
+        <span class="name">{{ s.issuer }}</span>
+        <span class="track"><span class="fill" style="width: {{ s.width }}%"></span></span>
+        <span class="val">{{ s.num_funds }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if u.new_managers %}
+<section class="section">
+  <h2>New to the screen</h2>
+  <p class="section-sub">Managers that qualified this quarter but not last{% if u.prev_quarter %} ({{ u.prev_quarter }}){% endif %}.</p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th class="no-sort">Manager</th><th class="no-sort num">AUM</th><th class="no-sort num"># Holdings</th></tr></thead>
+      <tbody>
+        {% for m in u.new_managers %}
+        <tr><td>{{ m.manager_name }}</td><td class="num">{{ m.aum }}</td><td class="num">{{ m.num_issuers }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}

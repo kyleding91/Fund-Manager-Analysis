@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "streamlit",
+      "runtimeArgs": ["run", "app.py", "--server.headless", "true", "--server.port", "8610"],
+      "port": 8610
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8620", "--directory", "site"],
+      "port": 8620
+    }
+  ]
+}
