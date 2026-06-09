@@ -181,6 +181,7 @@ Fund Manager Analysis/
 ├── requirements.txt    # libraries to install
 ├── ROADMAP.md          # the project plan & phases
 ├── .github/workflows/  # the auto-update-and-publish automation
+├── config/             # editable policy: screen.yaml (criteria) + curation.yaml (exclude/include)
 ├── data/
 │   ├── 13f.db          # your database (created on first load)
 │   └── raw/            # cached filings from the SEC
@@ -197,6 +198,10 @@ Fund Manager Analysis/
 - **Downloads seem slow** → that's intentional; the app stays under the SEC's
   rate limit. A full quarter scans thousands of filings.
 - **Want to change the screen** (e.g. $1B, or 40 holdings, or a different top-N
-  concentration cutoff) → edit `MIN_AUM_USD`, `MAX_HOLDINGS`, `TOP_N`, and
-  `TOP_N_MIN_PCT` at the top of `src/config.py`, then re-run
-  `python rebuild_universe.py`.
+  concentration cutoff) → edit `config/screen.yaml` (`min_aum_usd`,
+  `max_holdings`, `top_n`, `top_n_min_pct`), then re-run
+  `python rebuild_universe.py`. You can edit it right in GitHub's web editor.
+- **Want to hide or force-add a specific manager** → edit `config/curation.yaml`:
+  add a CIK under `exclude:` to hide it (rebuild the site — no download needed),
+  or under `include:` to track a manager that doesn't pass the screen (run
+  `python rebuild_universe.py` first so its holdings get loaded).

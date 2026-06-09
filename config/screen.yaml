@@ -1,0 +1,31 @@
+# Screening criteria (POLICY) -------------------------------------------------
+#
+# These are the rules that decide which managers make it into the tracker.
+# Edit the numbers here — on GitHub you can do it right in the web editor
+# (open this file → pencil icon → Commit changes). No coding needed.
+#
+# A manager's filing PASSES for a quarter when:
+#
+#     AUM > min_aum_usd
+#     AND ( holds <= max_holdings distinct companies
+#           OR  its top_n biggest positions are >= top_n_min_pct% of AUM )
+#
+# After changing anything here, re-screen everything by running:
+#     python3 rebuild_universe.py
+# (then rebuild the site / commit, as usual).
+#
+# If this file is missing or a value is left blank, the built-in defaults in
+# src/config.py are used instead.
+
+# Minimum total 13F portfolio size, in whole US dollars.
+# 2 billion = 2000000000  (write it without commas or underscores).
+min_aum_usd: 2000000000
+
+# "Concentrated" test #1: at most this many distinct companies (inclusive).
+max_holdings: 30
+
+# "Concentrated" test #2 uses the largest N positions...
+top_n: 10
+
+# ...and they must add up to at least this percentage of AUM.
+top_n_min_pct: 80.0

@@ -8,13 +8,16 @@ from __future__ import annotations
 
 import pandas as pd
 
+from . import curation
+
 
 # --- helpers -------------------------------------------------------------
 def previous_quarter(conn, quarter: str) -> str | None:
     """The screened quarter immediately before `quarter` (labels sort lexically)."""
     row = conn.execute(
-        """SELECT MAX(quarter_label) FROM filings
-           WHERE quarter_label < ? AND is_current = 1 AND passes_screen = 1""",
+        f"""SELECT MAX(quarter_label) FROM filings
+           WHERE quarter_label < ? AND is_current = 1
+             AND {curation.screen_predicate("")}""",
         (quarter,),
     ).fetchone()
     return row[0] if row and row[0] else None
@@ -24,12 +27,13 @@ def previous_quarter(conn, quarter: str) -> str | None:
 def most_held(conn, quarter: str, limit: int = 25) -> pd.DataFrame:
     """Stocks held by the most screened funds in a quarter (conviction signal)."""
     return pd.read_sql_query(
-        """SELECT MAX(h.name_of_issuer) AS issuer,
+        f"""SELECT MAX(h.name_of_issuer) AS issuer,
                   COUNT(DISTINCT f.cik) AS num_funds,
                   SUM(h.value_usd)       AS total_value,
                   AVG(h.pct_of_portfolio) AS avg_pct
            FROM holdings h JOIN filings f ON f.id = h.filing_id
-           WHERE f.is_current = 1 AND f.passes_screen = 1 AND f.quarter_label = :q
+           WHERE f.is_current = 1 AND {curation.screen_predicate("f.")}
+             AND f.quarter_label = :q
            GROUP BY h.issuer_cusip
            ORDER BY num_funds DESC, total_value DESC
            LIMIT :lim""",
@@ -40,14 +44,15 @@ def most_held(conn, quarter: str, limit: int = 25) -> pd.DataFrame:
 def top_concentration(conn, quarter: str, limit: int = 25) -> pd.DataFrame:
     """Funds whose single largest position is the biggest share of the portfolio."""
     return pd.read_sql_query(
-        """SELECT fn.manager_name, f.total_aum_usd, f.num_issuers,
+        f"""SELECT fn.manager_name, f.total_aum_usd, f.num_issuers,
                   (SELECT h2.name_of_issuer FROM holdings h2
                      WHERE h2.filing_id = f.id
                      ORDER BY h2.pct_of_portfolio DESC LIMIT 1) AS top_holding,
                   (SELECT MAX(h3.pct_of_portfolio) FROM holdings h3
                      WHERE h3.filing_id = f.id) AS top_pct
            FROM filings f JOIN funds fn ON fn.cik = f.cik
-           WHERE f.is_current = 1 AND f.passes_screen = 1 AND f.quarter_label = :q
+           WHERE f.is_current = 1 AND {curation.screen_predicate("f.")}
+             AND f.quarter_label = :q
            ORDER BY top_pct DESC
            LIMIT :lim""",
         conn, params={"q": quarter, "lim": limit},
@@ -60,12 +65,14 @@ def new_managers(conn, quarter: str) -> pd.DataFrame:
     if prev is None:
         return pd.DataFrame(columns=["manager_name", "total_aum_usd", "num_issuers"])
     return pd.read_sql_query(
-        """SELECT fn.manager_name, f.total_aum_usd, f.num_issuers
+        f"""SELECT fn.manager_name, f.total_aum_usd, f.num_issuers
            FROM filings f JOIN funds fn ON fn.cik = f.cik
-           WHERE f.is_current = 1 AND f.passes_screen = 1 AND f.quarter_label = :q
+           WHERE f.is_current = 1 AND {curation.screen_predicate("f.")}
+             AND f.quarter_label = :q
              AND f.cik NOT IN (
                  SELECT cik FROM filings
-                 WHERE is_current = 1 AND passes_screen = 1 AND quarter_label = :prev)
+                 WHERE is_current = 1 AND {curation.screen_predicate("")}
+                   AND quarter_label = :prev)
            ORDER BY f.total_aum_usd DESC""",
         conn, params={"q": quarter, "prev": prev},
     )
@@ -184,8 +191,9 @@ def render(st, conn, quarter: str, usd):  # pragma: no cover - UI glue
     # -- Per-fund QoQ ------------------------------------------------------
     st.markdown("#### 🔁 Quarter-over-quarter moves for one fund")
     funds = pd.read_sql_query(
-        """SELECT fn.cik, fn.manager_name FROM filings f JOIN funds fn ON fn.cik = f.cik
-           WHERE f.is_current = 1 AND f.passes_screen = 1 AND f.quarter_label = ?
+        f"""SELECT fn.cik, fn.manager_name FROM filings f JOIN funds fn ON fn.cik = f.cik
+           WHERE f.is_current = 1 AND {curation.screen_predicate("f.")}
+             AND f.quarter_label = ?
            ORDER BY fn.manager_name""",
         conn, params=(quarter,),
     )

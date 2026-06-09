@@ -5,3 +5,4 @@ pandas>=2.0         # tabular data handling
 streamlit>=1.30     # local web dashboard
 altair>=5.0         # charts in the dashboard
 jinja2>=3.1         # render the static website templates (build_site.py)
+pyyaml>=6.0         # read the policy/curation config (config/*.yaml)

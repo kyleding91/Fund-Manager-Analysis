@@ -7,13 +7,22 @@ from __future__ import annotations
 
 import pandas as pd
 
-# Only ever show filings that passed the screen and are the latest for their period.
-_CURRENT = "f.is_current = 1 AND f.passes_screen = 1"
+from . import curation
+
+
+def _current(alias: str = "f.") -> str:
+    """SQL for 'the live, curated filing to show for a period'.
+
+    Combines `is_current` (latest filing for the period) with the curated
+    universe predicate (mechanical screen + human include/exclude overrides
+    from config/curation.yaml).
+    """
+    return f"{alias}is_current = 1 AND {curation.screen_predicate(alias)}"
 
 
 def list_quarters(conn) -> list[str]:
     rows = conn.execute(
-        f"SELECT DISTINCT f.quarter_label FROM filings f WHERE {_CURRENT} "
+        f"SELECT DISTINCT f.quarter_label FROM filings f WHERE {_current()} "
         "ORDER BY f.quarter_label DESC"
     ).fetchall()
     return [r[0] for r in rows if r[0]]
@@ -23,7 +32,7 @@ def data_freshness(conn, quarter: str | None = None) -> dict:
     """When this data was loaded and how many screened funds it covers."""
     sql = (
         f"SELECT COUNT(*) AS n, MAX(f.loaded_at) AS last_loaded "
-        f"FROM filings f WHERE {_CURRENT}"
+        f"FROM filings f WHERE {_current()}"
     )
     params: dict = {}
     if quarter:
@@ -41,7 +50,7 @@ def list_funds(conn, *, quarter: str | None = None, min_aum: float = 0,
                f.period_of_report, f.total_aum_usd, f.num_positions, f.num_issuers,
                f.form_type, f.date_filed, f.accession
         FROM filings f JOIN funds fn ON fn.cik = f.cik
-        WHERE {_CURRENT}
+        WHERE {_current()}
           AND f.total_aum_usd >= :min_aum
           AND f.num_issuers <= :max_issuers
     """
@@ -93,7 +102,7 @@ def search_by_stock(conn, text: str, quarter: str | None = None) -> pd.DataFrame
         FROM holdings h
         JOIN filings f ON f.id = h.filing_id
         JOIN funds fn ON fn.cik = f.cik
-        WHERE {_CURRENT} AND h.name_of_issuer LIKE :text
+        WHERE {_current()} AND h.name_of_issuer LIKE :text
     """
     params = {"text": f"%{text}%"}
     if quarter:

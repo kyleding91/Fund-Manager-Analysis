@@ -10,7 +10,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime
 
-from . import classify, config, insights, queries
+from . import classify, config, curation, insights, queries
 
 
 # --- formatting ----------------------------------------------------------
@@ -138,7 +138,10 @@ def all_manager_ciks(conn) -> list[str]:
     rows = conn.execute(
         "SELECT DISTINCT cik FROM filings WHERE is_current = 1"
     ).fetchall()
-    return [str(r[0]) for r in rows]
+    # Don't build deep-dive pages for managers a human has excluded in
+    # config/curation.yaml (they're hidden everywhere else on the site too).
+    excluded = curation.excluded_ciks()
+    return [str(r[0]) for r in rows if curation._norm(r[0]) not in excluded]
 
 
 def universe(conn, quarter: str) -> dict:
@@ -235,9 +238,9 @@ def stocks(conn, quarter: str, limit: int = 300) -> list[dict]:
 
 def _cik_for(conn, manager_name: str, quarter: str) -> str:
     row = conn.execute(
-        """SELECT f.cik FROM filings f JOIN funds fn ON fn.cik=f.cik
+        f"""SELECT f.cik FROM filings f JOIN funds fn ON fn.cik=f.cik
            WHERE fn.manager_name=? AND f.quarter_label=? AND f.is_current=1
-             AND f.passes_screen=1 LIMIT 1""",
+             AND {curation.screen_predicate("f.")} LIMIT 1""",
         (manager_name, quarter),
     ).fetchone()
     return row[0] if row else ""

@@ -1,0 +1,29 @@
+# Manual curation (CURATION) --------------------------------------------------
+#
+# The screen in screen.yaml is purely mechanical: it keeps every filer whose
+# numbers qualify. This file is where a human overrides that, by hand:
+#
+#   exclude:  hide managers that technically pass but you don't want shown
+#             (e.g. index funds, market-makers, pension plans, duplicates).
+#   include:  force-show managers that don't pass the screen but you want
+#             tracked anyway (use sparingly).
+#
+# How to find a CIK: open the manager on the site or on SEC EDGAR; the CIK is
+# the numeric SEC id in the URL. Leading zeros don't matter (1067983 works).
+#
+# Exclusions take effect the moment the site is rebuilt — no SEC download
+# needed. To force-INCLUDE a manager you must (re)load its holdings first with
+# `python3 rebuild_universe.py`, since we only store passing managers' data.
+#
+# Every change here is tracked by git, so you always have an audit trail of who
+# was hidden or added, when, and why. Keep a short `reason` on each entry.
+
+exclude:
+  # - cik: 102909          # example: a large index-fund complex
+  #   name: Vanguard Group
+  #   reason: index funds, not a concentrated value manager
+
+include:
+  # - cik: 1067983         # example: force-track even if it dips below the screen
+  #   name: Berkshire Hathaway
+  #   reason: flagship value manager, always show

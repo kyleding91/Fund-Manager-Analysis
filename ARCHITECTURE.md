@@ -4,7 +4,7 @@ A working reference for how the **13F Fund Tracker** ("Value Flow") is built,
 how data flows through it, how to update it, and the non-obvious details worth
 remembering. Written to be readable without deep coding knowledge.
 
-Last updated: 2026-06-08.
+Last updated: 2026-06-09.
 
 ---
 
@@ -28,8 +28,25 @@ A manager's filing **passes the screen** for a quarter when:
 - The first branch (`≤ 30 issuers`) catches the classic concentrated book.
 - The second branch (`top-10 ≥ 80%`) catches managers who hold a long tail of
   tiny positions but still run a genuinely concentrated book in their big names.
-- All thresholds live in **`src/config.py`** (`MIN_AUM_USD`, `MAX_HOLDINGS`,
-  `TOP_N`, `TOP_N_MIN_PCT`). Change them there, then run `rebuild_universe.py`.
+- All thresholds live in **`config/screen.yaml`** (`min_aum_usd`, `max_holdings`,
+  `top_n`, `top_n_min_pct`) — a plain-text policy file editable from GitHub's web
+  editor, no code needed. `src/config.py` loads it (and falls back to built-in
+  defaults if the file or a key is missing). Change it, then run
+  `rebuild_universe.py` to re-screen everything under the new rules.
+
+**Curation (human overrides):** the screen is purely mechanical. To hand-tune the
+published universe, edit **`config/curation.yaml`**:
+- `exclude:` — hide managers that pass but you don't want shown (index funds,
+  market-makers, duplicates). Takes effect the moment the site is rebuilt; no SEC
+  download needed.
+- `include:` — force-track managers that don't pass the screen. You must
+  (re)load their holdings with `rebuild_universe.py` first, since we only store
+  passing managers' data.
+
+`src/curation.py` reads that file and produces a SQL predicate applied at the
+**query layer** (`queries.py`, `insights.py`, `site_data.py`). The mechanical
+`passes_screen` flag in the database is left untouched — it stays the algorithm's
+audit trail; curation is a separate, git-tracked overlay on top of it.
 
 **Full-history backfill:** if a manager passes the screen in *at least one* of
 the tracked quarters, we store its holdings for *all* tracked quarters — even
@@ -50,8 +67,13 @@ Fund Manager Analysis/
 ├── app.py               # the local Streamlit dashboard
 ├── requirements.txt     # Python libraries
 │
+├── config/              # human-editable policy/curation YAML (TRACKED in git)
+│   ├── screen.yaml      # screen thresholds (AUM floor, max holdings, top-N…)
+│   └── curation.yaml    # manual exclude/include overrides on the screen
+│
 ├── src/                 # the building blocks
-│   ├── config.py        # ALL tunable settings (screen thresholds, SEC access)
+│   ├── config.py        # SEC access + loads screen.yaml (with code defaults)
+│   ├── curation.py      # reads curation.yaml → SQL predicate (exclude/include)
 │   ├── edgar_client.py  # download SEC index + filings, rate-limit, cache to data/raw
 │   ├── parser.py        # read a filing's cover page + holdings table
 │   ├── screener.py      # compute AUM/issuers/top-10 and apply the screen
@@ -147,8 +169,19 @@ ledger, so it only downloads the universe's filings), rebuilds the site, commits
 the refreshed `data/13f.db` back to the repo, and publishes to Pages. You can
 also trigger it by hand from the **Actions** tab.
 
-**Change the screen thresholds:** edit `src/config.py`, then
-`python3 rebuild_universe.py` to re-screen everything under the new rules.
+**Change the screen thresholds:** edit `config/screen.yaml` (e.g. on GitHub,
+pencil icon → Commit), then `python3 rebuild_universe.py` to re-screen everything
+under the new rules, rebuild the site, and commit the refreshed DB.
+
+**Hide or force-add a manager:** edit `config/curation.yaml`.
+- To **exclude**: add the manager's CIK under `exclude:` and rebuild the site
+  (`python3 build_site.py`). No SEC download needed — it takes effect immediately
+  because exclusions are applied at query time. The CI run will republish it too.
+- To **include** a manager that doesn't pass the screen: add its CIK under
+  `include:`, then run `python3 rebuild_universe.py` (to download/store its
+  holdings) before rebuilding the site.
+Every edit is a git commit, so you have a dated audit trail of who was hidden or
+added, and why (keep a short `reason:` on each entry).
 
 **Keep only specific quarters:**
 ```bash

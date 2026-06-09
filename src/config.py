@@ -7,11 +7,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import yaml
+
 # --- Project paths -------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"            # cached raw filings from EDGAR
 DB_PATH = DATA_DIR / "13f.db"         # the SQLite database file
+CONFIG_DIR = PROJECT_ROOT / "config"  # human-editable policy/curation YAML
 
 # --- SEC EDGAR access ----------------------------------------------------
 # The SEC requires a descriptive User-Agent that includes a contact email.
@@ -39,10 +42,48 @@ FORM_TYPES = {"13F-HR", "13F-HR/A"}
 #   * its TOP_N largest positions make up at least TOP_N_MIN_PCT of AUM.
 # The second branch catches managers who hold a long tail of tiny positions but
 # still run a genuinely concentrated book in their top names.
-MIN_AUM_USD = 2_000_000_000
-MAX_HOLDINGS = 30          # at most this many distinct issuers (inclusive)
-TOP_N = 10                 # how many largest positions define "top holdings"
-TOP_N_MIN_PCT = 80.0       # top-N must be >= this % of AUM to count as concentrated
+#
+# These thresholds are POLICY, so they live in a human-editable YAML file
+# (config/screen.yaml) that anyone can change from GitHub's web editor without
+# touching Python. The values below are the built-in defaults / fallbacks used
+# when the file (or a given key) is missing. After changing screen.yaml, re-run
+# `python3 rebuild_universe.py` to re-screen everything under the new rules.
+SCREEN_PATH = CONFIG_DIR / "screen.yaml"
+
+_SCREEN_DEFAULTS = {
+    "min_aum_usd": 2_000_000_000,
+    "max_holdings": 30,        # at most this many distinct issuers (inclusive)
+    "top_n": 10,               # how many largest positions define "top holdings"
+    "top_n_min_pct": 80.0,     # top-N must be >= this % of AUM to count as concentrated
+}
+
+
+def _load_screen() -> dict:
+    """Read screen thresholds from config/screen.yaml, falling back to defaults.
+
+    Unknown keys are ignored; missing keys use the built-in default. A malformed
+    or absent file degrades gracefully to the defaults so the pipeline never
+    breaks on a typo in the policy file.
+    """
+    values = dict(_SCREEN_DEFAULTS)
+    try:
+        raw = yaml.safe_load(SCREEN_PATH.read_text(encoding="utf-8")) or {}
+        for key in _SCREEN_DEFAULTS:
+            if key in raw and raw[key] is not None:
+                values[key] = raw[key]
+    except FileNotFoundError:
+        pass
+    except (yaml.YAMLError, OSError):
+        # Bad YAML or unreadable file: keep defaults rather than crash.
+        pass
+    return values
+
+
+_screen = _load_screen()
+MIN_AUM_USD = int(_screen["min_aum_usd"])
+MAX_HOLDINGS = int(_screen["max_holdings"])
+TOP_N = int(_screen["top_n"])
+TOP_N_MIN_PCT = float(_screen["top_n_min_pct"])
 
 # --- Units handling ------------------------------------------------------
 # Before the SEC's amendment effective 2023-01-03, 13F "value" was reported in

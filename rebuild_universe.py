@@ -35,7 +35,7 @@ import argparse
 import logging
 import re
 
-from src import config
+from src import config, curation
 from src.database import connect, init_db
 from src.pipeline import run_quarter
 from src.quality import check_db
@@ -66,7 +66,13 @@ def quarters_in_db() -> list[tuple[int, int]]:
 
 
 def universe_ciks(quarters: list[tuple[int, int]]) -> set[str]:
-    """CIKs that qualify (passes_screen=1) in at least one tracked quarter."""
+    """CIKs in the curated universe across the tracked quarters.
+
+    Starts from every CIK that mechanically qualifies (passes_screen=1) in at
+    least one tracked quarter, then applies the human curation overrides from
+    config/curation.yaml: drop excluded managers, add force-included ones (whose
+    holdings then get backfilled below).
+    """
     labels = [f"{y}-Q{q}" for (y, q) in quarters]
     placeholders = ",".join("?" for _ in labels)
     with connect() as conn:
@@ -75,7 +81,7 @@ def universe_ciks(quarters: list[tuple[int, int]]) -> set[str]:
                 WHERE passes_screen = 1 AND quarter_label IN ({placeholders})""",
             labels,
         ).fetchall()
-    return {str(r[0]) for r in rows}
+    return curation.filter_ciks(str(r[0]) for r in rows)
 
 
 def rebuild(quarters: list[tuple[int, int]], *, backfill_only: bool = False) -> dict:
