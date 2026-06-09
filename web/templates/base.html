@@ -7,6 +7,25 @@
   <meta name="description" content="{% block description %}A quarterly screen of value-oriented, concentrated institutional managers, built from SEC EDGAR 13F filings.{% endblock %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="{{ root }}assets/style.css">
+
+  <!-- Progressive Web App: installable on the iPhone/Android home screen -->
+  <link rel="manifest" href="{{ root }}manifest.webmanifest">
+  <meta name="theme-color" content="#14253A">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ root }}assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="{{ root }}assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Value Flow">
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker
+          .register("{{ root }}sw.js", { scope: "{{ root }}" })
+          .catch(function () { /* offline support is best-effort */ });
+      });
+    }
+  </script>
 </head>
 <body>
 <header class="masthead">

@@ -63,9 +63,11 @@ Fund Manager Analysis/
 │   ├── site_data.py     # shape DB rows into the dict the website templates expect
 │   └── quality.py       # automated data-quality / invariant checks
 │
+├── make_icons.py        # regenerate the PWA / home-screen app icons (Pillow)
+│
 ├── web/                 # website source (used by build_site.py)
 │   ├── templates/       # Jinja2 HTML: base, index, funds, fund, stocks, methodology
-│   └── static/          # style.css, app.js (search/sort/filter in the browser)
+│   └── static/          # style.css, app.js, manifest.webmanifest, sw.js, icon-*.png
 │
 ├── data/
 │   ├── 13f.db           # the SQLite database  (TRACKED in git — see §6)
@@ -198,3 +200,27 @@ python3 ingest.py --stats                 # counts per table / quarter
 `src/quality.py` enforces the screen invariant (a passer must have AUM above the
 floor AND meet at least one concentration measure) and flags zero/negative
 holding values.
+
+---
+
+## 9. Phone app (PWA)
+
+The website is also a **Progressive Web App** — installable on an iPhone/Android
+home screen, no App Store, no Apple Developer account. Three pieces make it work,
+all generated into the published `site/`:
+
+- **`web/static/manifest.webmanifest`** — app name, icons, theme colour,
+  `display: standalone`. Copied to the **site root** at build time.
+- **`web/static/sw.js`** — a service worker (also at site root, so its scope
+  covers `/funds/*`). Network-first for pages (fresh data), cache-first for
+  assets, with offline fallback.
+- **`make_icons.py`** — regenerates the `icon-*.png` / `apple-touch-icon.png`
+  set from the brand colours (navy + emerald "VF"). Re-run if the brand changes.
+
+`web/templates/base.html` adds the `<link rel="manifest">`, Apple home-screen
+meta tags, and the service-worker registration (`{{ root }}sw.js`, scoped to
+`{{ root }}` so it works from both root and `/funds/` pages).
+
+**If you later want a real App Store app**, the clean path is a native SwiftUI
+client that reads a JSON feed emitted from this same database — the Python
+pipeline stays the single source of truth either way.

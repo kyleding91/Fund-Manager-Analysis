@@ -85,9 +85,16 @@ def build(out_dir: Path, quarter: str | None = None) -> dict:
     (out_dir / "funds").mkdir(parents=True, exist_ok=True)
     (out_dir / "data").mkdir(parents=True, exist_ok=True)
 
-    # static assets
-    for name in ("style.css", "app.js"):
+    # static assets (stylesheet, scripts, PWA icons)
+    asset_files = ("style.css", "app.js", "icon-192.png", "icon-512.png",
+                   "icon-512-maskable.png", "apple-touch-icon.png", "favicon-32.png")
+    for name in asset_files:
         shutil.copyfile(WEB / "static" / name, out_dir / "assets" / name)
+
+    # PWA manifest + service worker live at the site ROOT so the worker's scope
+    # covers every page (including /funds/*), making the site installable.
+    for name in ("manifest.webmanifest", "sw.js"):
+        shutil.copyfile(WEB / "static" / name, out_dir / name)
 
     # data
     universe = sd.universe(conn, quarter)
