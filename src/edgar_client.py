@@ -70,8 +70,11 @@ class EdgarClient:
                 resp = self.session.get(url, timeout=config.REQUEST_TIMEOUT)
                 if resp.status_code == 200:
                     return resp.content
-                # 429/503 → back off and retry; other 4xx → give up early
-                if resp.status_code in (429, 503):
+                # Back off and retry on rate-limiting / transient errors. The SEC
+                # returns 403 "Request Rate Threshold Exceeded" when an IP (e.g. a
+                # shared CI runner) is over the limit, so 403 is retryable too.
+                # Other 4xx (404 etc.) are genuine — give up early.
+                if resp.status_code in (403, 429, 503):
                     last_err = RuntimeError(f"HTTP {resp.status_code} for {url}")
                 elif 400 <= resp.status_code < 500:
                     raise RuntimeError(f"HTTP {resp.status_code} for {url}")

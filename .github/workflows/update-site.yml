@@ -47,7 +47,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # NOTE: the two SEC steps below are best-effort. The committed database
+      # already holds the tracked quarters, so the site can always be rebuilt
+      # and published from it. SEC EDGAR sometimes returns HTTP 403 ("Request
+      # Rate Threshold Exceeded") to shared CI runner IPs; `continue-on-error`
+      # ensures such a refresh hiccup never blocks publishing. When the refresh
+      # does succeed, the new data is committed back (see the commit step).
       - name: Load the latest quarter from SEC EDGAR
+        continue-on-error: true
         env:
           # Optional: set a repo secret named SEC_CONTACT_EMAIL to override the
           # default contact address used in the SEC User-Agent header.
@@ -62,6 +69,7 @@ jobs:
           fi
 
       - name: Backfill full history for the screened universe
+        continue-on-error: true
         env:
           SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
         run: |
