@@ -140,11 +140,24 @@ def build(out_dir: Path, quarter: str | None = None) -> dict:
                fund_tpl.render(root="../", active="funds", f=detail, **common))
         pages += 1
 
+    # per-stock pages — one for every company held by a screened manager this
+    # quarter, so every company name on the most-held page links to its holders.
+    stock_tpl = env.get_template("stock.html")
+    stock_pages = 0
+    for cusip in sd.all_stock_cusips(conn, quarter):
+        detail = sd.stock_detail(conn, cusip, quarter)
+        if not detail:
+            continue
+        _write(out_dir / "stocks" / f"{cusip}.html",
+               stock_tpl.render(root="../", active="stocks", s=detail, **common))
+        pages += 1
+        stock_pages += 1
+
     # a .nojekyll so GitHub Pages serves files/dirs starting with _ untouched
     (out_dir / ".nojekyll").write_text("", encoding="utf-8")
 
     return {"quarter": quarter, "pages": pages, "funds": len(funds),
-            "out": str(out_dir)}
+            "stocks": stock_pages, "out": str(out_dir)}
 
 
 def main() -> None:

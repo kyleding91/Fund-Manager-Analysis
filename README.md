@@ -125,6 +125,12 @@ The project can generate a polished, public **website** (separate from the local
 dashboard). It's a set of plain HTML files — fast, free to host, and works on
 phones. Search, filtering and sorting still work in the browser.
 
+It cross-links both ways: each **manager** has a deep-dive page (holdings +
+quarter-over-quarter moves), and each **company** on the *Most-held stocks* page
+links to a per-stock page showing every screened manager holding it, how each
+position changed last quarter, who newly bought or exited, and the combined
+position size + holder count over the last five quarters.
+
 ### Build it on your computer
 
 ```bash

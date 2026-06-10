@@ -80,6 +80,9 @@ h2:first-child { margin-top: 0; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow); }
 .card h3 { margin: 0 0 4px; font-size: 16px; }
 .card .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+.plain-list { list-style: none; margin: 0; padding: 0; }
+.plain-list li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.plain-list li:last-child { border-bottom: 0; }
 
 /* ---- horizontal bar list (most-held, type mix, concentration) ---- */
 .barlist { display: flex; flex-direction: column; gap: 9px; }

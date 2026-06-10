@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ s.issuer }} — 13F holders ({{ s.quarter }}){% endblock %}
+{% block description %}Which screened, concentrated managers hold {{ s.issuer }}, how each position changed quarter-over-quarter, and the combined position size over the last {{ s.trend|length }} quarters — from SEC EDGAR 13F filings.{% endblock %}
+{% block content %}
+
+<a class="backlink" href="{{ root }}stocks.html">&larr; Most-held stocks</a>
+<div class="fund-head">
+  <h1>{{ s.issuer }}</h1>
+  <span class="badge">Held by {{ s.num_holders }} of {{ s.universe }} managers</span>
+</div>
+<p class="lede">Combined disclosed 13F position of <strong>{{ s.total_value }}</strong> across the screened universe in {{ s.quarter }}.</p>
+
+<section class="section">
+  <h2>Combined position over time</h2>
+  <p class="section-sub">Total disclosed 13F value and the number of screened managers holding {{ s.issuer }}, over the last {{ s.trend|length }} quarters.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+    {% if s.value_svg %}
+    <div class="card spark">
+      <div class="section-sub" style="margin:0 0 6px;">Combined value</div>
+      <svg viewBox="0 0 {{ s.value_svg.width }} {{ s.value_svg.height }}" width="{{ s.value_svg.width }}" height="{{ s.value_svg.height }}" role="img" aria-label="Combined value over time">
+        <polyline class="line" points="{{ s.value_svg.polyline }}"></polyline>
+        {% for d in s.value_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }}</title></circle>{% endfor %}
+        <text class="axislab" x="{{ s.value_svg.dots[0].x }}" y="{{ s.value_svg.height - 6 }}">{{ s.value_svg.first_label }}</text>
+        <text class="axislab" x="{{ s.value_svg.width - 8 }}" y="{{ s.value_svg.height - 6 }}" text-anchor="end">{{ s.value_svg.last_label }}</text>
+      </svg>
+    </div>
+    <div class="card spark">
+      <div class="section-sub" style="margin:0 0 6px;">Managers holding</div>
+      <svg viewBox="0 0 {{ s.holders_svg.width }} {{ s.holders_svg.height }}" width="{{ s.holders_svg.width }}" height="{{ s.holders_svg.height }}" role="img" aria-label="Number of managers holding over time">
+        <polyline class="line" points="{{ s.holders_svg.polyline }}"></polyline>
+        {% for d in s.holders_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }} managers</title></circle>{% endfor %}
+        <text class="axislab" x="{{ s.holders_svg.dots[0].x }}" y="{{ s.holders_svg.height - 6 }}">{{ s.holders_svg.first_label }}</text>
+        <text class="axislab" x="{{ s.holders_svg.width - 8 }}" y="{{ s.holders_svg.height - 6 }}" text-anchor="end">{{ s.holders_svg.last_label }}</text>
+      </svg>
+    </div>
+    {% else %}
+    <p class="muted">Not enough quarters on record yet to chart a trend.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section">
+  <h2>What changed{% if s.prev_quarter %} since {{ s.prev_quarter }}{% endif %}</h2>
+  {% if s.prev_quarter %}
+  <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+    {% for c in s.counts %}
+    <div class="kpi"><div class="label">{{ c.emoji }} {{ c.kind|capitalize }}</div><div class="value">{{ c.n }}</div></div>
+    {% endfor %}
+  </div>
+  {% if s.new_buyers or s.exits %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+    <div class="card">
+      <h3 class="qsub" style="margin-top:0;">🟢 New buyers</h3>
+      {% if s.new_buyers %}
+      <ul class="plain-list">
+        {% for h in s.new_buyers %}
+        <li><a href="{{ root }}funds/{{ h.cik }}.html">{{ h.name }}</a> <span class="muted">{{ h.value }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">No new buyers this quarter.</p>{% endif %}
+    </div>
+    <div class="card">
+      <h3 class="qsub" style="margin-top:0;">🔴 Exited</h3>
+      {% if s.exits %}
+      <ul class="plain-list">
+        {% for e in s.exits %}
+        <li><a href="{{ root }}funds/{{ e.cik }}.html">{{ e.name }}</a> <span class="muted">was {{ e.was }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">No managers fully exited this quarter.</p>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% else %}
+  <p class="callout">This is the earliest quarter on record, so there's no prior filing to compare against yet.</p>
+  {% endif %}
+</section>
+
+<section class="section">
+  <h2>Current holders &mdash; {{ s.quarter }}</h2>
+  <p class="section-sub">Every screened manager holding {{ s.issuer }}, largest position first. Change vs {{ s.prev_quarter or 'the prior quarter' }} is by share count — what the manager actually bought or sold.</p>
+  <div class="table-wrap">
+    <table class="data" id="holders-table">
+      <thead>
+        <tr>
+          <th data-sort="text" data-key="name">Manager <span class="arrow">▾</span></th>
+          <th data-sort="num" data-key="value" class="num sorted-desc">Position value <span class="arrow">▾</span></th>
+          <th data-sort="num" data-key="pct" class="num">% of their portfolio <span class="arrow">▾</span></th>
+          <th class="no-sort num">Shares</th>
+          <th class="no-sort">Change</th>
+          <th data-sort="num" data-key="delta" class="num">&Delta; Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in s.holders %}
+        <tr data-name="{{ h.name|lower }}" data-value="{{ h.value_usd }}" data-pct="{{ h.pct_val }}" data-delta="{{ h.delta_val }}">
+          <td><a href="{{ root }}funds/{{ h.cik }}.html">{{ h.name }}</a></td>
+          <td class="num">{{ h.value }}</td>
+          <td class="num">{{ h.pct }}</td>
+          <td class="num">{{ h.shares }}</td>
+          <td>{% if h.change_type != 'unchanged' %}<span class="chg chg-{{ h.change_type }}">{{ h.emoji }} {{ h.change_type|capitalize }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td class="num {{ 'delta-pos' if h.delta_val > 0 else 'delta-neg' if h.delta_val < 0 }}">{{ h.delta }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="section-sub" style="margin-top:14px;">13F discloses long U.S.-listed positions only, reported with up to a 45-day lag. See the <a href="{{ root }}methodology.html">methodology</a> for details.</p>
+</section>
+
+<script src="{{ root }}assets/app.js"></script>
+{% endblock %}

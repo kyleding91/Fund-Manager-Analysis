@@ -71,8 +71,12 @@ def _histogram(values: list[float], edges: list[float], labels: list[str]) -> li
              "height": round(counts[i] / mx * 100, 2)} for i in range(len(counts))]
 
 
-def aum_timeline_svg(points: list[dict], width=520, height=140, pad=24) -> dict:
-    """Build an inline-SVG line chart of AUM over time. `points`=[{label,value}]."""
+def aum_timeline_svg(points: list[dict], width=520, height=140, pad=24, fmt=usd) -> dict:
+    """Build an inline-SVG line chart over time. `points`=[{label,value}].
+
+    `fmt` formats the value shown in each point's tooltip (defaults to USD; pass
+    a different formatter, e.g. for a plain count).
+    """
     if len(points) < 2:
         return {}
     vals = [p["value"] for p in points]
@@ -89,7 +93,7 @@ def aum_timeline_svg(points: list[dict], width=520, height=140, pad=24) -> dict:
         "width": width, "height": height,
         "polyline": line,
         "dots": [{"x": x, "y": y, "label": points[i]["label"],
-                  "value": usd(points[i]["value"])} for i, (x, y) in enumerate(coords)],
+                  "value": fmt(points[i]["value"])} for i, (x, y) in enumerate(coords)],
         "first_label": points[0]["label"], "last_label": points[-1]["label"],
     }
 
@@ -231,6 +235,7 @@ def stocks(conn, quarter: str, limit: int = 300) -> list[dict]:
     """Full most-held list for the stocks page, with raw values for sorting."""
     mh = insights.most_held(conn, quarter, limit=limit)
     return [{
+        "cusip": row.cusip,
         "issuer": row.issuer,
         "num_funds": int(row.num_funds),
         "total_value": usd(float(row.total_value)),
@@ -238,6 +243,115 @@ def stocks(conn, quarter: str, limit: int = 300) -> list[dict]:
         "avg_pct": pct(float(row.avg_pct)),
         "avg_pct_val": round(float(row.avg_pct), 2),
     } for row in mh.itertuples(index=False)]
+
+
+def all_stock_cusips(conn, quarter: str) -> list[str]:
+    """Issuer CUSIPs held by >=1 shown manager in the quarter (one page each)."""
+    rows = conn.execute(
+        f"""SELECT DISTINCT h.issuer_cusip
+            FROM holdings h JOIN filings f ON f.id = h.filing_id
+            WHERE f.is_current = 1 AND {curation.screen_predicate('f.')}
+              AND f.quarter_label = ?
+              AND h.issuer_cusip IS NOT NULL AND h.issuer_cusip != ''""",
+        (quarter,),
+    ).fetchall()
+    return [str(r[0]) for r in rows]
+
+
+def _shown_manager_count(conn, quarter: str) -> int:
+    row = conn.execute(
+        f"""SELECT COUNT(DISTINCT f.cik) FROM filings f
+            WHERE f.is_current = 1 AND {curation.screen_predicate('f.')}
+              AND f.quarter_label = ?""",
+        (quarter,),
+    ).fetchone()
+    return int(row[0] or 0)
+
+
+def stock_detail(conn, issuer_cusip: str, quarter: str, max_quarters: int = 5) -> dict | None:
+    """Everything one stock page needs: holders, QoQ moves, and the 5-quarter trend.
+
+    Mirrors `fund_detail`, pivoted to a single company: who in the screened
+    universe holds it now, how each position changed since last quarter (by share
+    count, like the manager pages), who newly bought or fully exited, and the
+    combined position size + holder count over time.
+    """
+    cur = insights.holders_of(conn, issuer_cusip, quarter)
+    if cur.empty:
+        return None
+    prev_q = insights.previous_quarter(conn, quarter)
+    prev = insights.holders_of(conn, issuer_cusip, prev_q) if prev_q else None
+    prev_val = {str(r.cik): float(r.value_usd or 0) for r in prev.itertuples(index=False)} if prev is not None else {}
+    prev_sh = {str(r.cik): float(r.shares or 0) for r in prev.itertuples(index=False)} if prev is not None else {}
+    prev_name = {str(r.cik): r.manager_name for r in prev.itertuples(index=False)} if prev is not None else {}
+
+    issuer = cur.iloc[0].issuer
+    emoji = {"new": "🟢", "added": "🔼", "trimmed": "🔽", "exited": "🔴"}
+
+    holders, new_buyers = [], []
+    counts = {"new": 0, "added": 0, "trimmed": 0, "exited": 0}
+    cur_ciks, total_value = set(), 0.0
+    for r in cur.itertuples(index=False):
+        cik = str(r.cik); cur_ciks.add(cik)
+        v = float(r.value_usd or 0); sh = float(r.shares or 0)
+        total_value += v
+        psh = prev_sh.get(cik)
+        if psh is None:
+            change = "new"
+        elif sh > psh:
+            change = "added"
+        elif sh < psh:
+            change = "trimmed"
+        else:
+            change = "unchanged"
+        if change in counts:
+            counts[change] += 1
+        delta = v - prev_val.get(cik, 0.0)
+        row = {
+            "cik": cik, "name": r.manager_name,
+            "value": usd(v), "value_usd": v,
+            "shares": f"{sh:,.0f}",
+            "pct": pct(float(r.pct_of_portfolio or 0)),
+            "pct_val": round(float(r.pct_of_portfolio or 0), 2),
+            "change_type": change, "emoji": emoji.get(change, ""),
+            "was": usd(prev_val[cik]) if cik in prev_val else "—",
+            "delta": usd(delta), "delta_val": delta,
+        }
+        holders.append(row)
+        if change == "new":
+            new_buyers.append(row)
+
+    # Exits: managers shown holding it last quarter but not this quarter.
+    exits = [{
+        "cik": cik, "name": prev_name[cik],
+        "was": usd(prev_val.get(cik, 0.0)), "emoji": emoji["exited"],
+    } for cik in prev_val if cik not in cur_ciks]
+    counts["exited"] = len(exits)
+
+    # 5-quarter trend: combined value + holder count (shown universe only).
+    tr = list(insights.issuer_trend(conn, issuer_cusip).itertuples(index=False))[-max_quarters:]
+    value_pts = [{"label": t.quarter, "value": float(t.total_value or 0)} for t in tr]
+    holder_pts = [{"label": t.quarter, "value": int(t.holders or 0)} for t in tr]
+
+    universe = _shown_manager_count(conn, quarter)
+    return {
+        "cusip": issuer_cusip,
+        "issuer": issuer,
+        "quarter": quarter,
+        "prev_quarter": prev_q,
+        "num_holders": len(holders),
+        "universe": universe,
+        "total_value": usd(total_value),
+        "holders": holders,
+        "new_buyers": new_buyers,
+        "exits": exits,
+        "counts": [{"kind": k, "emoji": emoji[k], "n": counts[k]}
+                   for k in ("new", "added", "trimmed", "exited")],
+        "value_svg": aum_timeline_svg(value_pts),
+        "holders_svg": aum_timeline_svg(holder_pts, fmt=lambda v: f"{int(v)}"),
+        "trend": [{"quarter": t.quarter, "value": usd(float(t.total_value or 0)),
+                   "holders": int(t.holders or 0)} for t in tr],
+    }
 
 
 def _cik_for(conn, manager_name: str, quarter: str) -> str:

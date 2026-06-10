@@ -27,7 +27,8 @@ def previous_quarter(conn, quarter: str) -> str | None:
 def most_held(conn, quarter: str, limit: int = 25) -> pd.DataFrame:
     """Stocks held by the most screened funds in a quarter (conviction signal)."""
     return pd.read_sql_query(
-        f"""SELECT MAX(h.name_of_issuer) AS issuer,
+        f"""SELECT h.issuer_cusip AS cusip,
+                  MAX(h.name_of_issuer) AS issuer,
                   COUNT(DISTINCT f.cik) AS num_funds,
                   SUM(h.value_usd)       AS total_value,
                   AVG(h.pct_of_portfolio) AS avg_pct
@@ -38,6 +39,49 @@ def most_held(conn, quarter: str, limit: int = 25) -> pd.DataFrame:
            ORDER BY num_funds DESC, total_value DESC
            LIMIT :lim""",
         conn, params={"q": quarter, "lim": limit},
+    )
+
+
+def holders_of(conn, issuer_cusip: str, quarter: str) -> pd.DataFrame:
+    """Every shown manager holding one issuer in a quarter (largest first).
+
+    Aggregates a manager's positions in the issuer (common + any share classes /
+    options that share the 6-digit issuer CUSIP) into one row. Only managers in
+    the curated, screened universe are counted, matching the rest of the site.
+    """
+    return pd.read_sql_query(
+        f"""SELECT f.cik, fn.manager_name, f.filer_type,
+                  MAX(h.name_of_issuer)    AS issuer,
+                  SUM(h.value_usd)         AS value_usd,
+                  SUM(h.shares)            AS shares,
+                  SUM(h.pct_of_portfolio)  AS pct_of_portfolio
+           FROM holdings h
+           JOIN filings f ON f.id = h.filing_id
+           JOIN funds fn  ON fn.cik = f.cik
+           WHERE h.issuer_cusip = :cusip AND f.is_current = 1
+             AND {curation.screen_predicate("f.")} AND f.quarter_label = :q
+           GROUP BY f.cik
+           ORDER BY value_usd DESC""",
+        conn, params={"cusip": issuer_cusip, "q": quarter},
+    )
+
+
+def issuer_trend(conn, issuer_cusip: str) -> pd.DataFrame:
+    """Per-quarter combined position + holder count for one issuer (oldest first).
+
+    Counts only the shown universe each quarter, so a manager parked below the
+    screen in some quarter (kept in the DB for history) isn't double-counted.
+    """
+    return pd.read_sql_query(
+        f"""SELECT f.quarter_label AS quarter,
+                  COUNT(DISTINCT f.cik) AS holders,
+                  SUM(h.value_usd)      AS total_value
+           FROM holdings h JOIN filings f ON f.id = h.filing_id
+           WHERE h.issuer_cusip = :cusip AND f.is_current = 1
+             AND {curation.screen_predicate("f.")}
+           GROUP BY f.quarter_label
+           ORDER BY f.quarter_label""",
+        conn, params={"cusip": issuer_cusip},
     )
 
 

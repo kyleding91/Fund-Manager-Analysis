@@ -28,7 +28,7 @@
       {% for s in stocks %}
       <tr data-name="{{ s.issuer|lower }}" data-cat="__all__"
           data-funds="{{ s.num_funds }}" data-value="{{ s.total_value_usd }}" data-pct="{{ s.avg_pct_val }}">
-        <td>{{ s.issuer }}</td>
+        <td><a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a></td>
         <td class="num">{{ s.num_funds }}</td>
         <td class="num">{{ s.total_value }}</td>
         <td class="num">{{ s.avg_pct }}</td>

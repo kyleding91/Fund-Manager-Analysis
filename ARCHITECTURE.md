@@ -90,6 +90,15 @@ quarters where it briefly dropped below the screen — so its deep-dive timeline
 and quarter-over-quarter moves are continuous. This is what `rebuild_universe.py`
 does.
 
+**Per-stock pages (the reverse view):** `build_site.py` also generates one page
+per company held by a screened manager (`stocks/<issuer_cusip>.html`), built from
+`site_data.stock_detail` (which uses `insights.holders_of` + `insights.issuer_trend`).
+Each lists every shown holder, the per-manager quarter-over-quarter change (by
+share count), who newly bought or exited, and the combined position size + holder
+count over the tracked quarters — the mirror image of the manager deep-dive,
+keyed by the 6-digit issuer CUSIP. All counts respect `screen_predicate`, so only
+the curated universe is reflected.
+
 ---
 
 ## 3. Code map (where things live)
@@ -127,7 +136,7 @@ Fund Manager Analysis/
 ├── make_icons.py        # regenerate the PWA / home-screen app icons (Pillow)
 │
 ├── web/                 # website source (used by build_site.py)
-│   ├── templates/       # Jinja2 HTML: base, index, funds, fund, stocks, methodology
+│   ├── templates/       # Jinja2 HTML: base, index, funds, fund, stocks, stock, methodology
 │   └── static/          # style.css, app.js, manifest.webmanifest, sw.js, icon-*.png
 │
 ├── data/
