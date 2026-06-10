@@ -1,0 +1,86 @@
+# Firm-type tags (FACTS about each filer) -------------------------------------
+#
+# Every 13F filer is tagged with a firm type — a *fact* about what kind of
+# institution it is. The app guesses the type from the filer's name, but the
+# guess is approximate. This file lets a human (or a review agent) correct the
+# guess for a specific filer, by its SEC CIK number.
+#
+# This is kept separate from curation.yaml on purpose:
+#   * firm_types.yaml  = WHAT a filer is   (a fact: "this is a holding company")
+#   * curation.yaml    = whether to SHOW it (an editorial choice)
+#
+# The known types (use one of these exact strings in `type:`):
+#   Investment Manager           — a genuine stock-picker (the kind we want)
+#   Holding Company              — an operating/holding co reporting a stake or two
+#   Mutual Fund / Advisor Complex — a broad fund family (hundreds/thousands of names)
+#   Market Maker / Broker        — a trading desk (excluded from the universe)
+#   Foundation / Endowment
+#   Pension / Sovereign
+#   Bank / Insurance
+#   Operating Company
+#
+# How to find a CIK: open the filer on the site or SEC EDGAR; the CIK is the
+# numeric id in the URL. Leading zeros don't matter (1067983 works).
+#
+# After editing, re-screen/rebuild as usual (python3 rebuild_universe.py).
+
+# Per-CIK corrections to the type guess. Each entry: {cik, type, reason}.
+overrides:
+  # Single-strategic-stake vehicles that the name heuristic mis-reads as an
+  # endowment / operating company. Tagged so the DB records WHAT they are; the
+  # min_holdings=3 floor is what actually drops them (reject_reason records that).
+  - cik: 316011             # Lilly Endowment Inc
+    type: Holding Company
+    reason: endowment reporting a single ~100% Eli Lilly stake, not a manager
+  - cik: 1783464            # Japan Post Holdings Co., Ltd.
+    type: Holding Company
+    reason: operating/holding company reporting one strategic stake, not a manager
+  - cik: 1521365            # Glencore plc
+    type: Holding Company
+    reason: operating company reporting a strategic stake or two, not a manager
+
+  # Operating / holding companies the NAME heuristic mis-reads as a manager.
+  # These report strategic corporate stakes, not a managed equity book.
+  - cik: 1094517            # Toyota Motor Corp
+    type: Operating Company
+    reason: automaker holding strategic stakes (Joby, Grab, Uber), not a fund
+  - cik: 1589122            # Exor N.V.
+    type: Holding Company
+    reason: Agnelli-family holding company (Ferrari/Philips), not a fund manager
+  - cik: 889232             # Investor AB
+    type: Holding Company
+    reason: Wallenberg-family investment holding company, not a 13F stock-picker
+  - cik: 1162777            # Partners Value Investments L.P.
+    type: Holding Company
+    reason: Brookfield-affiliated holding vehicle (~100% Brookfield), not a manager
+  - cik: 1065521            # SoftBank Group Corp.
+    type: Operating Company
+    reason: operating/holding conglomerate holding strategic stakes, not a fund
+  - cik: 1269094            # Folketrygdfondet
+    type: Pension / Sovereign
+    reason: manager of Norway's state pension fund (70% Equinor), not a private fund
+  - cik: 1535839            # Donor Advised Charitable Giving, Inc.
+    type: Holding Company
+    reason: donor-advised vehicle ~99% one donated NVIDIA stake, not an equity book
+
+  # PROTECT: genuine concentrated managers the heuristic mis-tags as operating
+  # companies (so the Operating Company exclusion below does not drop them).
+  - cik: 1607841            # SC US (TTGP), Ltd. — Sequoia Capital China / HongShan
+    type: Investment Manager
+    reason: VC/growth equity manager (DoorDash, Instacart, PDD), genuinely concentrated
+  - cik: 1510677            # Consulta Ltd
+    type: Investment Manager
+    reason: diversified discretionary equity manager (MSFT/AMZN/Visa/Netflix), keep
+
+# Firm types hidden from the curated universe. If omitted, the default is just
+# market-makers. List the exact type strings above to hide more. We hide the
+# institution types that aren't fundamental, concentrated *fund managers*:
+# market-makers, operating/holding companies (strategic corporate stakes),
+# sovereigns/central banks/pensions, and banks/insurers. Foundations/endowments
+# and PE/VC are intentionally KEPT (some run genuinely concentrated books).
+excluded_types:
+  - Market Maker / Broker
+  - Operating Company
+  - Holding Company
+  - Pension / Sovereign
+  - Bank / Insurance

@@ -23,30 +23,66 @@ whole thing is Python and runs on your Mac; the website is free to host.
 
 A manager's filing **passes the screen** for a quarter when:
 
-> **AUM > $2 billion** **AND** ( **≤ 30 distinct issuers** **OR** **top-10 positions ≥ 80% of AUM** )
+> **AUM > $2 billion** **AND** **≥ min_holdings (3) issuers** **AND**
+> **< max_etf_pct (50%) of AUM in ETFs/index funds** **AND**
+> ( **≤ 30 distinct issuers** **OR** ( **top-10 ≥ 80% of AUM** **AND** **≤ 50 distinct issuers** ) )
 
 - The first branch (`≤ 30 issuers`) catches the classic concentrated book.
-- The second branch (`top-10 ≥ 80%`) catches managers who hold a long tail of
-  tiny positions but still run a genuinely concentrated book in their big names.
+- The second branch (`top-10 ≥ 80%`) catches managers who hold a *modest* tail of
+  small positions but still run a genuinely concentrated book in their big names.
+  The **`≤ 50 issuers` ceiling on this branch** is the headline fix that keeps out
+  long-tail mutual-fund / advisor complexes (hundreds–thousands of names) that are
+  merely top-heavy. Without it they slipped in via the weight branch.
+- `min_holdings` is a floor on distinct issuers (set to `3`). It drops 1–2-stock
+  "portfolios" — operating/holding companies, sovereigns and PE vehicles reporting
+  one or two strategic stakes. The target band of concentrated value managers is
+  ~3–50 names; every benchmark manager holds 8+, so the floor never touches them.
+- **Passive-basket guard** (`max_etf_pct`): a filing with ≥ 50% of AUM in ETFs /
+  index funds is a passive basket (a sovereign or advisor parking cash in indexes),
+  not a stock-picker, so it fails even when the basket looks "concentrated" (a few
+  big sector ETFs). ETF sponsors are matched by issuer name in
+  `src/classify.py` `is_etf_name()`. This catches filers a *name*-based firm-type
+  tag misses (e.g. an "Investment Manager" that actually holds only iShares).
 - All thresholds live in **`config/screen.yaml`** (`min_aum_usd`, `max_holdings`,
-  `top_n`, `top_n_min_pct`) — a plain-text policy file editable from GitHub's web
-  editor, no code needed. `src/config.py` loads it (and falls back to built-in
-  defaults if the file or a key is missing). Change it, then run
-  `rebuild_universe.py` to re-screen everything under the new rules.
+  `max_holdings_weighted`, `min_holdings`, `top_n`, `top_n_min_pct`, `max_etf_pct`)
+  — a plain-text policy file editable from GitHub's web editor, no code needed.
+  `src/config.py` loads it (and falls back to built-in defaults if the file or a
+  key is missing). Change it, then run `rebuild_universe.py` to re-screen.
 
-**Curation (human overrides):** the screen is purely mechanical. To hand-tune the
-published universe, edit **`config/curation.yaml`**:
+**Firm-type tagging (a fact about each filer):** `src/classify.py` tags every
+filer with a firm type — `Investment Manager`, `Holding Company`,
+`Mutual Fund / Advisor Complex`, `Market Maker / Broker`, etc. — from a name
+heuristic, **overridable per-CIK** in **`config/firm_types.yaml`**. The tag is
+*stored in the database* (`funds`, `filings`, `quarter_screen`) so it's queryable.
+Firm types in the **excluded set** are hidden from the curated universe. We exclude
+the institution types that aren't fundamental, concentrated *fund managers*:
+`Market Maker / Broker`, `Operating Company`, `Holding Company`,
+`Pension / Sovereign`, and `Bank / Insurance` (all in the YAML's `excluded_types:`).
+**Foundations/endowments and PE/VC are kept** — some run genuinely concentrated
+books (Gates Foundation Trust, Carlyle). Because the name heuristic is imperfect,
+per-CIK overrides correct both directions: tagging mis-read operating companies
+(Toyota, Exor, Investor AB) *and* protecting real managers the heuristic mislabels
+as operating companies (SC US = Sequoia China, Consulta).
+
+**Curation (editorial show/hide):** the screen is purely mechanical. To hand-tune
+the published universe, edit **`config/curation.yaml`**:
 - `exclude:` — hide managers that pass but you don't want shown (index funds,
   market-makers, duplicates). Takes effect the moment the site is rebuilt; no SEC
   download needed.
 - `include:` — force-track managers that don't pass the screen. You must
   (re)load their holdings with `rebuild_universe.py` first, since we only store
-  passing managers' data.
+  passing managers' data. **Force-include wins** over both exclusion paths.
 
-`src/curation.py` reads that file and produces a SQL predicate applied at the
-**query layer** (`queries.py`, `insights.py`, `site_data.py`). The mechanical
-`passes_screen` flag in the database is left untouched — it stays the algorithm's
-audit trail; curation is a separate, git-tracked overlay on top of it.
+`config/firm_types.yaml` (facts) is kept separate from `config/curation.yaml`
+(editorial). Both, plus `passes_screen`, combine in **exactly one SQL predicate**
+— `src/curation.py` `screen_predicate(alias)`:
+
+> `cik in include  OR  ( passes_screen = 1  AND  cik not in exclude  AND  filer_type not in <excluded types> )`
+
+Because `filings.filer_type` is a stored column, the ~8 existing query call sites
+(`queries.py`, `insights.py`, `site_data.py`) inherit the firm-type rule with zero
+edits. The mechanical `passes_screen` flag is left untouched — it stays the
+algorithm's audit trail; firm-type and curation are separate, git-tracked overlays.
 
 **Full-history backfill:** if a manager passes the screen in *at least one* of
 the tracked quarters, we store its holdings for *all* tracked quarters — even
@@ -63,25 +99,28 @@ Fund Manager Analysis/
 ├── ingest.py            # CLI: load/screen a quarter, --stats, --check
 ├── rebuild_universe.py  # CLI: re-screen + backfill full history for the universe
 ├── prune_quarters.py    # CLI: keep only chosen quarters, delete the rest
+├── evaluate_screen.py   # CLI (READ-ONLY): audit the screen vs the benchmark
 ├── build_site.py        # generate the static website into ./site
 ├── app.py               # the local Streamlit dashboard
 ├── requirements.txt     # Python libraries
 │
-├── config/              # human-editable policy/curation YAML (TRACKED in git)
-│   ├── screen.yaml      # screen thresholds (AUM floor, max holdings, top-N…)
-│   └── curation.yaml    # manual exclude/include overrides on the screen
+├── config/              # human-editable policy YAML (TRACKED in git)
+│   ├── screen.yaml      # screen thresholds (AUM floor, max holdings, top-N, ceiling…)
+│   ├── curation.yaml    # editorial exclude/include overrides on the screen
+│   ├── firm_types.yaml  # per-CIK firm-type corrections + excluded_types
+│   └── benchmark.yaml   # labeled must_pass / must_exclude answer key for the audit
 │
 ├── src/                 # the building blocks
 │   ├── config.py        # SEC access + loads screen.yaml (with code defaults)
-│   ├── curation.py      # reads curation.yaml → SQL predicate (exclude/include)
+│   ├── curation.py      # screen.yaml flag + curation + firm-type → ONE SQL predicate
 │   ├── edgar_client.py  # download SEC index + filings, rate-limit, cache to data/raw
 │   ├── parser.py        # read a filing's cover page + holdings table
-│   ├── screener.py      # compute AUM/issuers/top-10 and apply the screen
+│   ├── screener.py      # compute AUM/issuers/top-10, apply the screen, reject_reason()
 │   ├── database.py      # SQLite schema, migrations, upserts, the screen ledger
-│   ├── pipeline.py      # glue: download → parse → screen → store, for a quarter
+│   ├── pipeline.py      # glue: download → parse → screen → tag firm type → store
 │   ├── queries.py       # read queries for the dashboard (fund list, timeline)
 │   ├── insights.py      # quarter-over-quarter, most-held, concentration
-│   ├── classify.py      # label filer type (manager vs pension vs market-maker…)
+│   ├── classify.py      # firm-type heuristic + per-CIK overrides + excluded set
 │   ├── site_data.py     # shape DB rows into the dict the website templates expect
 │   └── quality.py       # automated data-quality / invariant checks
 │
@@ -109,10 +148,21 @@ fourth is the new criteria ledger.
 
 | Table | Rows (≈) | One row = | Key columns |
 |---|---|---|---|
-| `funds` | 302 | a manager | `cik` (SEC id), name, latest AUM |
-| `filings` | 1,498 | a manager's filing for one quarter | `cik`, `quarter_label`, `total_aum_usd`, `num_issuers`, `top_n_pct`, `passes_screen`, `is_current` |
+| `funds` | 302 | a manager | `cik` (SEC id), name, `filer_type` |
+| `filings` | 1,498 | a manager's filing for one quarter | `cik`, `quarter_label`, `total_aum_usd`, `num_issuers`, `top_n_pct`, `passes_screen`, `is_current`, `filer_type` |
 | `holdings` | 118,113 | one stock position in a filing | `filing_id`, issuer, value, shares |
-| `quarter_screen` | 42,129 | **every** filer scanned in a quarter | `(cik, quarter_label)` PK, `meets_count`, `meets_weight`, `passes_screen`, AUM, top-10 % |
+| `quarter_screen` | 42,129 | **every** filer scanned in a quarter | `(cik, quarter_label)` PK, `meets_count`, `meets_weight`, `passes_screen`, AUM, top-10 %, `filer_type`, `reject_reason` |
+
+**Audit columns (added with the firm-type screen):**
+- **`filer_type`** (on `funds`, `filings`, `quarter_screen`) — the firm-type tag
+  (mild denormalization so the one-line predicate needs no joins; written by
+  `record_screen` / `upsert_fund`).
+- **`reject_reason`** (on `quarter_screen`) — for a filer that *failed* the
+  mechanical screen, which gate it failed, from a fixed vocabulary: `confidential`,
+  `aum_below_floor`, `below_min_holdings`, `too_many_holdings_for_weight`,
+  `not_concentrated` (empty when it passed). `curation.explain(conn, cik, quarter)`
+  combines this with firm-type + curation membership to answer, in one line, "why
+  is (or isn't) this filer shown?". Forward-only `_migrate()` adds both columns.
 
 **Relationships:** `funds.cik` → `filings.cik` → `holdings.filing_id`.
 `quarter_screen` is a standalone ledger keyed by `(cik, quarter_label)`.
@@ -137,14 +187,18 @@ SEC EDGAR  ──download──▶  data/raw/ (cache)
                               │
                           parser.py  ──▶  cover page (manager, period) + holdings
                               │
-                         screener.py  ──▶  AUM, # issuers, top-10 %, pass/fail
+                         screener.py  ──▶  AUM, # issuers, top-10 %, pass/fail, reject_reason
+                              │
+                         classify.py  ──▶  firm_type(cik, name)  (heuristic + overrides)
                               │
                          pipeline.py  ──▶  record_screen() into quarter_screen
                               │            upsert_fund() into funds/filings/holdings
                               ▼
                           data/13f.db
-                         /            \
-                  app.py (dashboard)   build_site.py ──▶ site/ ──▶ GitHub Pages
+                         /       |       \
+        app.py (dashboard)  evaluate_screen.py   build_site.py ──▶ site/ ──▶ Pages
+                            (read-only audit →
+                             data/audit/*.md,json)
 ```
 
 **Quarter labels follow the holdings date, not the filing date.** Holdings as of
@@ -217,6 +271,27 @@ python3 prune_quarters.py --keep 2026-Q1 --dry-run    # preview, change nothing
   limit). A full quarter scan is intentionally slow. Contact email is in
   `config.CONTACT_EMAIL`, overridable via the `SEC_CONTACT_EMAIL` env var / repo
   secret.
+- **Firm type is a fact, curation is an opinion:** `classify.firm_type(cik, name)`
+  guesses a type from the name, then lets `config/firm_types.yaml` `overrides:`
+  correct it per-CIK. Excluded types (`excluded_types:`, default just
+  `Market Maker / Broker`) are *hidden* from the shown universe. This is kept
+  separate from `curation.yaml` on purpose: type answers "what is this filer",
+  curation answers "do I want to show it". They meet in exactly one place —
+  `curation.screen_predicate()` — so all ~8 query call sites inherit both rules
+  with no edits, and a force-`include` always wins over a firm-type exclusion (R3).
+- **One predicate, three tables denormalized:** `filer_type` is mirrored onto
+  `funds`, `filings` and `quarter_screen` (R5). Mild denormalization, but it lets
+  the "shown" rule be one SQL clause (`COALESCE(f.filer_type,'') NOT IN (...)`)
+  instead of a join in every query. `COALESCE(...,'')` means a NULL type (a row
+  not yet re-screened) is treated as *not excluded* — shown, never silently
+  dropped.
+- **Audit trail answers "why isn't X shown?":** `quarter_screen.reject_reason`
+  records the mechanical reason a filer failed (fixed vocabulary in
+  `screener.reject_reason`: `confidential`, `aum_below_floor`,
+  `below_min_holdings`, `mostly_etfs`, `too_many_holdings_for_weight`,
+  `not_concentrated`, or `""` for passers). Firm-type and curation reasons are derived at query time
+  (they depend on YAML the user can edit without re-screening);
+  `curation.explain(conn, cik, quarter)` combines all three into one sentence.
 - **Current tracked window:** 2025-Q1, 2025-Q2, 2025-Q3, 2025-Q4, 2026-Q1
   (five quarters). 268 managers now have all five quarters of history.
 
@@ -231,8 +306,23 @@ python3 ingest.py --stats                 # counts per table / quarter
 ```
 
 `src/quality.py` enforces the screen invariant (a passer must have AUM above the
-floor AND meet at least one concentration measure) and flags zero/negative
-holding values.
+floor AND meet at least one concentration measure, the weight branch now also
+capped at `MAX_HOLDINGS_WEIGHTED`) and flags zero/negative holding values.
+
+### Benchmark regression guard
+
+`config/benchmark.yaml` is a labeled gold set: `must_pass` (famous concentrated
+value managers that must always appear) and `must_exclude` (known non-managers
+that must never appear). `evaluate_screen.py` is a **read-only** harness that runs
+over the live DB and writes `data/audit/screen_audit.{json,md}`: the shown
+universe with each filer's firm type and admitting branch, suspected false
+positives (issuers < 3 or > 50, or an excluded firm type), and any benchmark
+violations with the per-filer reason. Acceptance is encoded as five criteria
+(100% must_pass shown, 0% must_exclude shown, false positives < 5%, no must_pass
+hidden by a mechanical rule, agent sign-off). `tests/test_benchmark.py` turns the
+first four into a regression test that **skips** when `data/13f.db` is absent (so
+the offline suite still passes) or when the DB hasn't been re-screened yet with
+the firm-type columns.
 
 ---
 

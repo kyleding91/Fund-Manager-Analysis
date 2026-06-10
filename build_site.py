@@ -73,6 +73,9 @@ def build(out_dir: Path, quarter: str | None = None) -> dict:
     fresh = sd.freshness(conn, quarter)
     criteria = dict(min_aum_b=int(config.MIN_AUM_USD / 1e9),
                     max_holdings=config.MAX_HOLDINGS,
+                    max_holdings_weighted=config.MAX_HOLDINGS_WEIGHTED,
+                    min_holdings=config.MIN_HOLDINGS,
+                    max_etf_pct=int(config.MAX_ETF_PCT),
                     top_n=config.TOP_N, top_n_min_pct=int(config.TOP_N_MIN_PCT))
     common = dict(site_name=SITE_NAME, quarter=quarter,
                   quarter_slug=_quarter_slug(quarter), freshness=fresh,

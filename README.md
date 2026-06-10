@@ -2,9 +2,13 @@
 
 A small, all-local app that downloads quarterly **13F filings** from the SEC,
 keeps only **value-oriented, concentrated managers**
-(**AUM > $2 billion AND (≤ 30 holdings OR top-10 positions ≥ 80% of AUM)**),
-stores them in a database, and lets you explore the holdings and
-quarter-over-quarter changes in your browser.
+(**AUM > $2 billion AND (≤ 30 holdings OR (top-10 positions ≥ 80% of AUM AND
+≤ 50 holdings))**), stores them in a database, and lets you explore the holdings
+and quarter-over-quarter changes in your browser.
+
+It also **tags each filer's type** (genuine manager, market-maker, mutual-fund
+complex, holding company…) and keeps an **audit trail** of why every filer is or
+isn't shown — so the curated universe stays honest and reviewable.
 
 Everything is Python and runs on your own Mac — no accounts, servers, or fees.
 
@@ -77,10 +81,16 @@ To stop the dashboard, go back to Terminal and press `Ctrl + C`.
    holdings table (company, value, shares).
 3. **Screen** — `src/screener.py` normalizes the numbers and keeps funds with
    AUM > $2B that are concentrated by either measure: ≤ 30 distinct companies,
-   or top-10 positions ≥ 80% of AUM.
-4. **Store** — `src/database.py` saves passing funds into `data/13f.db` (SQLite),
-   and logs every filer's screen result per quarter in the `quarter_screen` table.
-5. **Explore** — `app.py` (the dashboard) and `src/insights.py` read that database.
+   or top-10 positions ≥ 80% of AUM *and* no more than 50 companies (the holdings
+   ceiling keeps long-tail index/mutual-fund complexes out). It also records a
+   short **reject reason** for every filer that doesn't pass.
+4. **Classify** — `src/classify.py` tags each filer's type from its name (plus
+   per-CIK overrides in `config/firm_types.yaml`). Excluded types — market-makers
+   by default — are hidden even if they pass the numbers.
+5. **Store** — `src/database.py` saves passing funds into `data/13f.db` (SQLite),
+   and logs every filer's screen result, firm type and reject reason per quarter
+   in the `quarter_screen` table.
+6. **Explore** — `app.py` (the dashboard) and `src/insights.py` read that database.
 
 To make each manager's deep-dive show a continuous history, `rebuild_universe.py`
 re-screens the tracked quarters and backfills the holdings of every qualifying
@@ -181,9 +191,15 @@ Fund Manager Analysis/
 ├── requirements.txt    # libraries to install
 ├── ROADMAP.md          # the project plan & phases
 ├── .github/workflows/  # the auto-update-and-publish automation
-├── config/             # editable policy: screen.yaml (criteria) + curation.yaml (exclude/include)
+├── config/             # editable policy (all GitHub-web-editable):
+│   │                   #   screen.yaml     — numeric criteria
+│   │                   #   curation.yaml   — force exclude / include by CIK
+│   │                   #   firm_types.yaml — per-CIK type overrides + excluded types
+│   │                   #   benchmark.yaml  — must-pass / must-exclude regression lists
+├── evaluate_screen.py  # read-only audit: writes data/audit/ report + checks the benchmark
 ├── data/
 │   ├── 13f.db          # your database (created on first load)
+│   ├── audit/          # the screen audit report (JSON + markdown)
 │   └── raw/            # cached filings from the SEC
 ├── src/                # the building blocks (client, parser, screener, db, insights, site_data)
 ├── web/                # website templates + styles (templates/, static/)
@@ -199,9 +215,18 @@ Fund Manager Analysis/
   rate limit. A full quarter scans thousands of filings.
 - **Want to change the screen** (e.g. $1B, or 40 holdings, or a different top-N
   concentration cutoff) → edit `config/screen.yaml` (`min_aum_usd`,
-  `max_holdings`, `top_n`, `top_n_min_pct`), then re-run
-  `python rebuild_universe.py`. You can edit it right in GitHub's web editor.
+  `max_holdings`, `max_holdings_weighted`, `min_holdings`, `top_n`,
+  `top_n_min_pct`, `max_etf_pct`), then re-run `python rebuild_universe.py`. You
+  can edit it right in GitHub's web editor.
 - **Want to hide or force-add a specific manager** → edit `config/curation.yaml`:
   add a CIK under `exclude:` to hide it (rebuild the site — no download needed),
   or under `include:` to track a manager that doesn't pass the screen (run
   `python rebuild_universe.py` first so its holdings get loaded).
+- **A filer is mis-typed** (e.g. a holding company or mutual-fund complex slips
+  in, or a genuine manager is wrongly excluded) → add its CIK under `overrides:`
+  in `config/firm_types.yaml` with the correct `type`. To exclude a whole
+  category, list it under `excluded_types:`. A force-`include:` in
+  `curation.yaml` always wins over a firm-type exclusion.
+- **Want to see why a manager is / isn't shown** → run `python3 evaluate_screen.py`
+  and open `data/audit/screen_audit.md`. It lists the shown universe, suspected
+  false positives, and any benchmark violations with the exact reason for each.

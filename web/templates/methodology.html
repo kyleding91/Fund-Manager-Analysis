@@ -15,17 +15,22 @@
   qualifies when it has:</p>
   <ul>
     <li><strong>More than ${{ criteria.min_aum_b }}&nbsp;billion</strong> in disclosed 13F assets, <strong>and</strong></li>
+    <li>at least <strong>{{ criteria.min_holdings }} distinct companies</strong> (so single- and double-stock
+    vehicles — operating companies reporting one strategic stake — are excluded), <strong>and</strong></li>
+    <li>less than <strong>{{ criteria.max_etf_pct }}% of assets in ETFs or index funds</strong> (a mostly-ETF
+    book is a passive basket, not a stock-picker), <strong>and</strong></li>
     <li>is concentrated by <strong>either</strong> measure:
       <ul>
         <li><strong>{{ criteria.max_holdings }} or fewer distinct companies</strong> held, <strong>or</strong></li>
-        <li>its <strong>top {{ criteria.top_n }} positions make up at least {{ criteria.top_n_min_pct }}%</strong> of disclosed AUM.</li>
+        <li>its <strong>top {{ criteria.top_n }} positions make up at least {{ criteria.top_n_min_pct }}%</strong> of disclosed AUM, while still holding <strong>{{ criteria.max_holdings_weighted }} or fewer distinct companies</strong>.</li>
       </ul>
     </li>
   </ul>
   <div class="callout">A large book paired with either a short holdings list or a heavy top-10
   weighting is the signature of a manager who concentrates capital in their best ideas, rather than
-  indexing broadly. The second test catches managers who carry a long tail of tiny positions but
-  still run a genuinely concentrated portfolio.</div>
+  indexing broadly. The second test catches managers who carry a modest tail of small positions but
+  still run a genuinely concentrated portfolio — while the {{ criteria.max_holdings_weighted }}-company
+  cap on that test keeps out broad mutual-fund complexes that merely happen to be top-heavy.</div>
 
   <h2>Manager deep-dives keep full history</h2>
   <p>Whether a manager qualifies can change from quarter to quarter — a book can drift just over or
@@ -35,11 +40,14 @@
   clearly marked (with a ○) and are excluded from that quarter's screened universe and rankings.</p>
 
   <h2>Filer types</h2>
-  <p>13F filings come from many kinds of institutions, not just stock-pickers — pensions, sovereign
-  wealth funds, university endowments, foundations, insurers, banks, market-makers, and operating
-  companies holding strategic stakes all file. We label each filer by type using a transparent,
-  name-based heuristic so you can focus on genuine <em>investment managers</em> and filter the rest out.
-  The heuristic is approximate; corrections are welcome.</p>
+  <p>13F filings come from many kinds of institutions, not just stock-pickers. We label each filer by
+  type and <strong>exclude the kinds that aren't fundamental, concentrated fund managers</strong>:
+  market-makers / trading desks, operating and holding companies (corporations reporting strategic
+  stakes), sovereign wealth funds, central banks and pensions, and banks / insurers.
+  <strong>Private-equity / venture firms and foundations / endowments are kept</strong>, since some run
+  genuinely concentrated equity books. Types come from a transparent name heuristic with
+  <em>per-filer overrides</em> for the cases a name can't settle (and to protect real managers whose
+  name looks like an operating company). The heuristic is approximate; corrections are welcome.</p>
 
   <h2>How figures are computed</h2>
   <ul>

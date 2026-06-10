@@ -29,12 +29,17 @@ def check_db(conn) -> list[str]:
         if r["total_aum_usd"] is None or r["total_aum_usd"] <= config.MIN_AUM_USD:
             issues.append(f"{tag}: AUM ${r['total_aum_usd']:,.0f} not above the screen floor")
         few_issuers = r["num_issuers"] is not None and 0 < r["num_issuers"] <= config.MAX_HOLDINGS
-        heavy_top = (r["top_n_pct"] or 0) >= config.TOP_N_MIN_PCT
+        heavy_top = (
+            (r["top_n_pct"] or 0) >= config.TOP_N_MIN_PCT
+            and r["num_issuers"] is not None
+            and r["num_issuers"] <= config.MAX_HOLDINGS_WEIGHTED
+        )
         if not (few_issuers or heavy_top):
             issues.append(
                 f"{tag}: not concentrated — {r['num_issuers']} issuers and top-"
                 f"{config.TOP_N} weight {r['top_n_pct'] or 0:.1f}% "
-                f"(need <= {config.MAX_HOLDINGS} issuers or >= {config.TOP_N_MIN_PCT:.0f}%)")
+                f"(need <= {config.MAX_HOLDINGS} issuers, or >= {config.TOP_N_MIN_PCT:.0f}% "
+                f"with <= {config.MAX_HOLDINGS_WEIGHTED} issuers)")
 
         # Holdings should sum to the reported AUM and to ~100%.
         agg = conn.execute(

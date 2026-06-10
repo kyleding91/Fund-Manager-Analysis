@@ -11,7 +11,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from src import classify, config, insights, queries
+from src import classify, config, curation, insights, queries
 
 st.set_page_config(page_title="13F Fund Tracker", page_icon="📈", layout="wide")
 
@@ -33,13 +33,25 @@ def usd(x: float) -> str:
 
 
 def with_types(funds: pd.DataFrame) -> pd.DataFrame:
-    """Attach a filer category + emoji label to each fund (name-based heuristic)."""
+    """Attach a filer category + emoji label to each fund.
+
+    Uses the stored ``filer_type`` tag (which honors per-CIK overrides in
+    config/firm_types.yaml) so the dashboard matches the screen's actual
+    decision; falls back to the name heuristic only for rows with no stored tag.
+    """
     if funds.empty:
         return funds.assign(category=[], type_label=[])
-    cats = funds["manager_name"].map(classify.classify_manager)
+
+    def _cat(row) -> str:
+        stored = (row.get("filer_type") or "") if hasattr(row, "get") else ""
+        if stored in classify.CATEGORY_EMOJI:
+            return stored
+        return classify.classify_manager(row["manager_name"])
+
+    cats = funds.apply(_cat, axis=1)
     return funds.assign(
         category=cats,
-        type_label=funds["manager_name"].map(classify.label),
+        type_label=cats.map(lambda c: f"{classify.CATEGORY_EMOJI[c]} {c}"),
     )
 
 
@@ -61,6 +73,17 @@ if not quarters:
 # --- sidebar (filters) ---------------------------------------------------
 st.sidebar.header("Filters")
 quarter = st.sidebar.selectbox("Quarter", quarters, index=0)
+# Upper bound for the issuer filter = the most issuers any screened filer holds
+# this quarter. The screen now admits managers via EITHER "<=30 issuers" OR
+# "top-10 >= 80% of AUM"; the latter often hold a long tail of 30+ names, so a
+# hard 29 cap would silently hide them (and not match the static website).
+_max_iss_row = conn.execute(
+    "SELECT MAX(f.num_issuers) FROM filings f "
+    f"WHERE f.is_current = 1 AND {curation.screen_predicate('f.')} "
+    "AND f.quarter_label = ?",
+    (quarter,),
+).fetchone()
+max_iss_avail = max(2, int((_max_iss_row and _max_iss_row[0]) or 30))
 managers_only = st.sidebar.toggle(
     "Investment managers only", value=True,
     help="Hide pensions, sovereign funds, foundations, banks, market-makers and "
@@ -79,11 +102,16 @@ picked_types = st.sidebar.multiselect(
     help="Shown only when the 'Investment managers only' toggle is off.",
 )
 min_aum_b = st.sidebar.slider("Min AUM ($B)", 2.0, 50.0, 2.0, 0.5)
-max_iss = st.sidebar.slider("Max # issuers", 1, 29, 29)
+max_iss = st.sidebar.slider(
+    "Max # issuers", 1, max_iss_avail, max_iss_avail,
+    help="Defaults to the maximum, so every screened manager is shown (matching "
+         "the website). Lower it to focus on the most concentrated books.",
+)
 search = st.sidebar.text_input("Search manager name")
 st.sidebar.caption(
     f"Screen: AUM > ${config.MIN_AUM_USD/1e9:.0f}B and "
-    f"< {config.MAX_HOLDINGS} distinct issuers."
+    f"(≤ {config.MAX_HOLDINGS} issuers or top-{config.TOP_N} "
+    f"≥ {config.TOP_N_MIN_PCT:.0f}% of AUM with ≤ {config.MAX_HOLDINGS_WEIGHTED} issuers)."
 )
 
 st.title("📈 13F Fund Tracker")

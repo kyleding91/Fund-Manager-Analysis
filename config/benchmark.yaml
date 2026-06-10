@@ -1,0 +1,138 @@
+# Screen benchmark (LABELS) ---------------------------------------------------
+#
+# A small, hand-labeled "answer key" used to judge whether the screen is doing
+# its job. The evaluation harness (evaluate_screen.py) checks the live database
+# against these two lists and reports any violations.
+#
+#   must_pass:    filers that SHOULD be shown — genuine concentrated value
+#                 managers. If any of these is hidden, the screen is too tight.
+#   must_exclude: filers that should NOT be shown — operating/holding companies
+#                 reporting one strategic stake, broad mutual-fund/advisor
+#                 complexes, market-makers. If any is shown, the screen is too loose.
+#
+# Each entry is {cik, name, reason}. CIK is the numeric SEC id (leading zeros
+# don't matter). Names are for humans; matching is by CIK.
+#
+# Editing rules for the auto-iteration loop: you may ADD well-justified entries,
+# but never DELETE one just to make the screen pass — that defeats the purpose.
+
+must_pass:
+  - cik: 1647251
+    name: TCI Fund Management
+    reason: flagship concentrated activist value manager
+  - cik: 1336528
+    name: Pershing Square Capital Management
+    reason: highly concentrated activist book (~7-10 names)
+  - cik: 1418814
+    name: ValueAct Holdings
+    reason: concentrated activist value manager
+  - cik: 1112520
+    name: Akre Capital Management
+    reason: classic focused compounder portfolio
+  - cik: 1345471
+    name: Trian Fund Management
+    reason: concentrated activist value manager
+  - cik: 1868537
+    name: Fundsmith Investment Services
+    reason: focused quality-value global manager
+  - cik: 1517137
+    name: Starboard Value
+    reason: concentrated activist manager
+  - cik: 1581811
+    name: Egerton Capital (UK)
+    reason: concentrated long/short equity value manager
+  - cik: 1358706
+    name: Abrams Capital Management
+    reason: concentrated value manager
+  - cik: 1709323
+    name: Himalaya Capital Management
+    reason: very concentrated long-term value manager
+  - cik: 1541617
+    name: Altimeter Capital Management
+    reason: concentrated growth/value manager
+  - cik: 1113000
+    name: Kensico Capital Management
+    reason: concentrated value manager
+  - cik: 1541448
+    name: Veritas Asset Management
+    reason: focused quality-value manager
+  - cik: 1483866
+    name: Independent Franchise Partners
+    reason: concentrated franchise-value manager
+
+must_exclude:
+  - cik: 316011
+    name: Lilly Endowment
+    reason: holding entity reporting a single ~100% Eli Lilly stake
+  - cik: 67088
+    name: Mitsubishi UFJ Financial Group
+    reason: bank holding company, not a concentrated value manager
+  - cik: 1521365
+    name: Glencore plc
+    reason: operating company reporting a strategic stake
+  - cik: 1783464
+    name: Japan Post Holdings
+    reason: operating/holding company, not a value manager
+  - cik: 1728354
+    name: Briar Hall Management
+    reason: single-stock vehicle (~100% ITW)
+  - cik: 2069049
+    name: BC Partners PE
+    reason: PE vehicle reporting one or two strategic stakes, not a concentrated book
+  - cik: 1475483
+    name: American Securities
+    reason: PE firm reporting a single strategic stake
+  - cik: 1901930
+    name: H&F Corporate Investors X
+    reason: PE vehicle reporting one strategic stake
+  - cik: 2061426
+    name: One Rock Capital Partners
+    reason: PE vehicle (~100% Primo Brands)
+  - cik: 1963326
+    name: RPOA Advisors
+    reason: single/few-stock vehicle, not a value manager
+  - cik: 1715696
+    name: BNDES Participacoes
+    reason: state development bank holding entity
+  - cik: 1103653
+    name: MassMutual Private Wealth & Trust
+    reason: insurer/advisor complex, not a concentrated value manager
+  - cik: 1569395
+    name: Mirae Asset Global Investments
+    reason: broad mutual-fund complex (~1,400 holdings)
+  - cik: 1727336
+    name: First Command Advisory Services
+    reason: broad advisor complex, top-heavy but not focused
+  - cik: 2062680
+    name: Rakuten Investment Management
+    reason: broad advisor/fund complex
+  - cik: 947529
+    name: Vanguard Advisers
+    reason: broad mutual-fund/advisor complex
+  - cik: 1632341
+    name: Belvedere Trading
+    reason: options market-maker / trading desk
+  # Operating / holding companies reporting strategic corporate stakes.
+  - cik: 1045810
+    name: NVIDIA Corp
+    reason: operating company holding strategic stakes, not a fund manager
+  - cik: 1094517
+    name: Toyota Motor Corp
+    reason: automaker holding strategic stakes (name-mistagged as a manager)
+  - cik: 889232
+    name: Investor AB
+    reason: Wallenberg-family investment holding company, not a 13F stock-picker
+  # Sovereign wealth / central banks.
+  - cik: 1767640
+    name: Public Investment Fund (Saudi PIF)
+    reason: sovereign wealth fund, not a fundamental value fund manager
+  - cik: 1965704
+    name: Bank of Korea
+    reason: central bank parking reserves in index ETFs
+  # Passive index-ETF baskets (advisor complexes holding only ETFs).
+  - cik: 1672512
+    name: Matson Money
+    reason: holds only iShares/DFA index ETFs — passive, not a stock-picker
+  - cik: 1087912
+    name: VantagePoint Investment Advisers
+    reason: index-ETF basket, not a concentrated value book

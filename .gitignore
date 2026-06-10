@@ -15,5 +15,8 @@ data/*.log
 # Generated static website (rebuilt by CI and published to GitHub Pages)
 site/
 
+# Generated screen-audit report (re-created by evaluate_screen.py on demand)
+data/audit/
+
 # OS
 .DS_Store

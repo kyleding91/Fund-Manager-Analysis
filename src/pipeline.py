@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from . import config
+from . import classify, config
 from .database import connect, init_db, upsert_fund, record_screen, stats
 from .edgar_client import EdgarClient, FilingRef
 from .parser import parse_submission
@@ -55,6 +55,9 @@ def process_ref(conn, client: EdgarClient, ref: FilingRef, *,
     if parsed is None:
         return None
     sf = screen_filing(parsed)
+    # Tag the filer's type (fact about the institution), with per-CIK overrides
+    # layered on the name heuristic. This single chokepoint sees every filing.
+    sf.filer_type = classify.firm_type(sf.cik, sf.manager_name)
     if record_all:
         record_screen(conn, sf)
     if sf.passes_screen or store_all:

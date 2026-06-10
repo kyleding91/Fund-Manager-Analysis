@@ -20,7 +20,7 @@ from functools import lru_cache
 
 import yaml
 
-from . import config
+from . import classify, config
 
 CURATION_PATH = config.CONFIG_DIR / "curation.yaml"
 
@@ -103,24 +103,92 @@ def _sql_cik_list(ciks: set[str], alias: str) -> str:
     return f"{col} IN ({quoted})"
 
 
+def _sql_excluded_firm_types(alias: str) -> str:
+    """`COALESCE(<alias>filer_type,'') IN ('Market Maker / Broker', ...)`.
+
+    COALESCE so a NULL filer_type (e.g. an old row not yet re-screened) is treated
+    as "not an excluded type" — i.e. it stays shown rather than silently dropping.
+    """
+    types = classify.excluded_firm_types()
+    quoted = ", ".join("'" + t.replace("'", "''") + "'" for t in types)
+    return f"COALESCE({alias}filer_type, '') IN ({quoted})"
+
+
 def screen_predicate(alias: str = "f.") -> str:
     """Return a SQL boolean expression for 'shown in the curated universe'.
 
-    Combines the mechanical screen flag with the human overrides:
+    One source of truth for "shown", combining three independent layers:
 
-        (passes_screen = 1 OR cik in include) AND cik not in exclude
+        cik in include
+        OR ( passes_screen = 1
+             AND cik not in exclude
+             AND filer_type not in <excluded firm types> )
 
-    `alias` is the table alias prefix for the columns, e.g. "f." (default) or
-    "" when the query has no alias. The expression is safe to drop into a WHERE
-    clause and always returns a valid boolean even when both lists are empty.
+    i.e. a filer is shown when a human force-includes it (which WINS over every
+    exclusion path — R3), or when it mechanically passes the screen and is neither
+    hand-excluded nor an excluded firm type (market-makers by default).
+
+    `alias` is the table alias prefix for the columns, e.g. "f." (default) or ""
+    when the query has no alias. Safe to drop into a WHERE clause; always a valid
+    boolean even when the curation lists are empty.
     """
     excl = excluded_ciks()
     incl = included_ciks()
+    excluded_types = classify.excluded_firm_types()
 
     passes = f"{alias}passes_screen = 1"
-    if incl:
-        passes = f"({passes} OR {_sql_cik_list(incl, alias)})"
-
+    clauses = [passes]
     if excl:
-        return f"{passes} AND NOT ({_sql_cik_list(excl, alias)})"
-    return passes
+        clauses.append(f"NOT ({_sql_cik_list(excl, alias)})")
+    if excluded_types:
+        clauses.append(f"NOT ({_sql_excluded_firm_types(alias)})")
+    mechanical = " AND ".join(clauses)
+    if len(clauses) > 1:
+        mechanical = f"({mechanical})"
+
+    if incl:
+        return f"({_sql_cik_list(incl, alias)} OR {mechanical})"
+    return mechanical
+
+
+def explain(conn, cik, quarter: str) -> str:
+    """One-line answer to 'why is (or isn't) this filer shown in this quarter?'.
+
+    Reconciles the three layers using the per-quarter ledger (quarter_screen):
+    the mechanical reject_reason, the stored filer_type, and the curation lists.
+    Returns a human-readable sentence. Used by the audit harness and ad-hoc Qs.
+    """
+    norm = _norm(cik)
+    incl = norm in included_ciks()
+    excl = norm in excluded_ciks()
+
+    row = conn.execute(
+        """SELECT passes_screen, reject_reason, filer_type, manager_name
+           FROM quarter_screen
+           WHERE LTRIM(cik, '0') = ? AND quarter_label = ?""",
+        (norm, quarter),
+    ).fetchone()
+    if row is None:
+        if incl:
+            return "force-included (config/curation.yaml), but no screen record this quarter"
+        return "no screen record for this quarter"
+
+    passes = bool(row["passes_screen"])
+    reason = row["reject_reason"] or ""
+    ftype = row["filer_type"] or ""
+    ft_excluded = ftype in set(classify.excluded_firm_types())
+
+    shown = incl or (passes and not excl and not ft_excluded)
+    if shown:
+        if incl and not (passes and not excl and not ft_excluded):
+            return "shown — force-included via config/curation.yaml"
+        return "shown — passes the screen"
+
+    # Not shown: report the most decisive reason first.
+    if not passes:
+        return f"hidden — did not pass the screen ({reason or 'not_concentrated'})"
+    if excl:
+        return "hidden — excluded in config/curation.yaml"
+    if ft_excluded:
+        return f"hidden — firm type '{ftype}' is excluded"
+    return "hidden"

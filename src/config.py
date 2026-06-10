@@ -39,9 +39,13 @@ FORM_TYPES = {"13F-HR", "13F-HR/A"}
 # Keep value-oriented, concentrated managers. A filing passes if its total 13F
 # AUM is above the floor AND it is "concentrated" by EITHER measure:
 #   * holds at most MAX_HOLDINGS distinct issuers, OR
-#   * its TOP_N largest positions make up at least TOP_N_MIN_PCT of AUM.
-# The second branch catches managers who hold a long tail of tiny positions but
-# still run a genuinely concentrated book in their top names.
+#   * its TOP_N largest positions make up at least TOP_N_MIN_PCT of AUM *and* it
+#     holds at most MAX_HOLDINGS_WEIGHTED issuers (so a 1,400-name mutual-fund
+#     complex that happens to be top-heavy is NOT mistaken for a focused book).
+# The second branch catches managers who hold a moderate tail of small positions
+# but still run a genuinely concentrated book in their top names.
+# A small MIN_HOLDINGS floor (default 1 = no-op) screens out 1-2 stock vehicles
+# if you choose to raise it.
 #
 # These thresholds are POLICY, so they live in a human-editable YAML file
 # (config/screen.yaml) that anyone can change from GitHub's web editor without
@@ -52,9 +56,12 @@ SCREEN_PATH = CONFIG_DIR / "screen.yaml"
 
 _SCREEN_DEFAULTS = {
     "min_aum_usd": 2_000_000_000,
-    "max_holdings": 30,        # at most this many distinct issuers (inclusive)
-    "top_n": 10,               # how many largest positions define "top holdings"
-    "top_n_min_pct": 80.0,     # top-N must be >= this % of AUM to count as concentrated
+    "max_holdings": 30,            # "few names" branch: at most this many issuers
+    "max_holdings_weighted": 50,   # weight branch also caps issuers at this many
+    "min_holdings": 1,             # floor on issuers (1 = no-op; raise to drop 1-2 stock vehicles)
+    "top_n": 10,                   # how many largest positions define "top holdings"
+    "top_n_min_pct": 80.0,         # top-N must be >= this % of AUM to count as concentrated
+    "max_etf_pct": 50.0,           # if >= this % of AUM is in ETFs/index funds, it's a passive basket, not a stock-picker
 }
 
 
@@ -82,8 +89,11 @@ def _load_screen() -> dict:
 _screen = _load_screen()
 MIN_AUM_USD = int(_screen["min_aum_usd"])
 MAX_HOLDINGS = int(_screen["max_holdings"])
+MAX_HOLDINGS_WEIGHTED = int(_screen["max_holdings_weighted"])
+MIN_HOLDINGS = int(_screen["min_holdings"])
 TOP_N = int(_screen["top_n"])
 TOP_N_MIN_PCT = float(_screen["top_n_min_pct"])
+MAX_ETF_PCT = float(_screen["max_etf_pct"])
 
 # --- Units handling ------------------------------------------------------
 # Before the SEC's amendment effective 2023-01-03, 13F "value" was reported in

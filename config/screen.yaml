@@ -7,8 +7,13 @@
 # A manager's filing PASSES for a quarter when:
 #
 #     AUM > min_aum_usd
+#     AND  holds >= min_holdings distinct companies
 #     AND ( holds <= max_holdings distinct companies
-#           OR  its top_n biggest positions are >= top_n_min_pct% of AUM )
+#           OR  ( its top_n biggest positions are >= top_n_min_pct% of AUM
+#                 AND it holds <= max_holdings_weighted distinct companies ) )
+#
+# The max_holdings_weighted cap stops a 1,000-name mutual-fund complex that
+# merely happens to be top-heavy from being mistaken for a focused book.
 #
 # After changing anything here, re-screen everything by running:
 #     python3 rebuild_universe.py
@@ -29,3 +34,24 @@ top_n: 10
 
 # ...and they must add up to at least this percentage of AUM.
 top_n_min_pct: 80.0
+
+# ...AND, for test #2 only, the manager must hold no more than this many distinct
+# companies overall. Keeps out long-tail mutual-fund complexes (hundreds/thousands
+# of names) that are top-heavy but clearly not focused value books.
+max_holdings_weighted: 50
+
+# Floor on distinct companies. 1 = no floor. Set to 3 so single-/double-stock
+# "portfolios" — operating/holding companies, sovereigns and PE vehicles
+# reporting one or two strategic stakes — are dropped mechanically. This matches
+# the target band of concentrated value managers (~3-50 holdings); every genuine
+# manager in the benchmark holds 8+ names, so the floor never touches them. The
+# clearest single-stake holding companies are ALSO tagged in firm_types.yaml so
+# the database records *why* they're out, not just that they were too small.
+min_holdings: 3
+
+# Passive-basket guard. If at least this percentage of a filer's AUM sits in ETFs
+# / index funds (iShares, Vanguard, SPDR, DFA, central-bank ETF baskets, etc.),
+# it's parking cash in indexes, not picking stocks — so it fails the screen even
+# if the basket looks "concentrated". The ETF sponsors are matched by issuer name
+# in src/classify.py (is_etf_name).
+max_etf_pct: 50.0

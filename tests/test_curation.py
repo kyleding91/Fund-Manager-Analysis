@@ -48,9 +48,28 @@ class TestCurationOverrides(unittest.TestCase):
 
     def test_empty_predicate(self):
         self._use("exclude:\ninclude:\n")
-        self.assertEqual(curation.screen_predicate("f."), "f.passes_screen = 1")
+        # Even with empty curation lists, market-makers are excluded by firm type
+        # by default, so the predicate carries a filer_type clause.
+        pred = curation.screen_predicate("f.")
+        self.assertIn("f.passes_screen = 1", pred)
+        self.assertIn("COALESCE(f.filer_type", pred)
+        self.assertIn("Market Maker / Broker", pred)
         self.assertEqual(curation.excluded_ciks(), set())
         self.assertEqual(curation.included_ciks(), set())
+
+    def test_firm_type_clause_present(self):
+        self._use("exclude:\ninclude:\n")
+        pred = curation.screen_predicate("f.")
+        # The excluded firm types come from classify.excluded_firm_types().
+        for t in curation.classify.excluded_firm_types():
+            self.assertIn(t, pred)
+
+    def test_include_wins_over_firm_type_and_exclude(self):
+        # A CIK that is force-included must be shown even if also excluded.
+        self._use("exclude:\n  - cik: 1067983\ninclude:\n  - cik: 1067983\n")
+        pred = curation.screen_predicate("f.")
+        # Include clause comes first as a top-level OR (so it wins).
+        self.assertTrue(pred.startswith("(LTRIM(f.cik, '0') IN ('1067983') OR"))
 
     def test_exclude_predicate(self):
         self._use("exclude:\n  - cik: 0000102909\n    name: Vanguard\n")
@@ -75,7 +94,10 @@ class TestCurationOverrides(unittest.TestCase):
         curation.CURATION_PATH = Path("/nonexistent/curation.yaml")
         curation.reload()
         self.assertEqual(curation.excluded_ciks(), set())
-        self.assertEqual(curation.screen_predicate("f."), "f.passes_screen = 1")
+        # No curation overrides, but the default firm-type exclusion remains.
+        pred = curation.screen_predicate("f.")
+        self.assertIn("f.passes_screen = 1", pred)
+        self.assertIn("COALESCE(f.filer_type", pred)
 
 
 class TestScreenConfigLoader(unittest.TestCase):

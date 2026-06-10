@@ -33,7 +33,7 @@
     <button type="button" class="chip {{ 'on' if loop.first }}{{ ' off-screen' if not q.meets_criteria }}" data-q="{{ q.slug }}"{% if not q.meets_criteria %} title="Shown for history — did not meet the selection criteria this quarter"{% endif %}>{{ q.quarter }}{% if not q.meets_criteria %} <span class="dot-off">○</span>{% endif %}</button>
     {% endfor %}
   </div>
-  <p class="section-sub">○ marks quarters shown for history where the manager didn't meet the selection criteria ({{ criteria.min_aum_b }}B+ AUM and either &le;{{ criteria.max_holdings }} issuers or top {{ criteria.top_n }} &ge; {{ criteria.top_n_min_pct }}% of AUM).</p>
+  <p class="section-sub">○ marks quarters shown for history where the manager didn't meet the selection criteria ({{ criteria.min_aum_b }}B+ AUM and either &le;{{ criteria.max_holdings }} issuers or top {{ criteria.top_n }} &ge; {{ criteria.top_n_min_pct }}% of AUM with &le;{{ criteria.max_holdings_weighted }} issuers).</p>
   {% endif %}
 
   {% for q in f.quarters %}

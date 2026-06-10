@@ -103,7 +103,11 @@ def _fund_rows(conn, quarter: str) -> list[dict]:
     df = queries.list_funds(conn, quarter=quarter, min_aum=0, max_issuers=100000)
     rows = []
     for r in df.itertuples(index=False):
-        cat = classify.classify_manager(r.manager_name)
+        # Prefer the stored firm-type tag (honors per-CIK overrides) so the
+        # charts match the screen's actual decision; fall back to the name
+        # heuristic only for older rows with no stored tag.
+        stored = getattr(r, "filer_type", "") or ""
+        cat = stored if stored in classify.CATEGORY_EMOJI else classify.classify_manager(r.manager_name)
         rows.append({
             "cik": str(r.cik),
             "manager_name": r.manager_name,
@@ -302,10 +306,11 @@ def fund_detail(conn, cik: str, quarter: str, max_quarters: int = 5) -> dict | N
     if tl.empty:
         return None
 
-    row = conn.execute("SELECT manager_name FROM funds WHERE cik = ?",
+    row = conn.execute("SELECT manager_name, filer_type FROM funds WHERE cik = ?",
                        (str(cik),)).fetchone()
     manager_name = row[0] if row else str(cik)
-    cat = classify.classify_manager(manager_name)
+    stored = (row[1] if row else "") or ""
+    cat = stored if stored in classify.CATEGORY_EMOJI else classify.classify_manager(manager_name)
 
     # Full history for the sparkline (oldest -> newest).
     timeline = [{"label": t.quarter_label, "value": float(t.total_aum_usd)}

@@ -48,7 +48,7 @@ def list_funds(conn, *, quarter: str | None = None, min_aum: float = 0,
     sql = f"""
         SELECT f.id AS filing_id, f.cik, fn.manager_name, f.quarter_label,
                f.period_of_report, f.total_aum_usd, f.num_positions, f.num_issuers,
-               f.form_type, f.date_filed, f.accession
+               f.form_type, f.date_filed, f.accession, f.filer_type
         FROM filings f JOIN funds fn ON fn.cik = f.cik
         WHERE {_current()}
           AND f.total_aum_usd >= :min_aum

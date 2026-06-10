@@ -35,8 +35,8 @@ import argparse
 import logging
 import re
 
-from src import config, curation
-from src.database import connect, init_db
+from src import classify, config, curation
+from src.database import connect, init_db, sync_filings_screen
 from src.pipeline import run_quarter
 from src.quality import check_db
 
@@ -69,19 +69,29 @@ def universe_ciks(quarters: list[tuple[int, int]]) -> set[str]:
     """CIKs in the curated universe across the tracked quarters.
 
     Starts from every CIK that mechanically qualifies (passes_screen=1) in at
-    least one tracked quarter, then applies the human curation overrides from
+    least one tracked quarter, drops filers whose firm type is excluded (e.g.
+    market-makers), then applies the human curation overrides from
     config/curation.yaml: drop excluded managers, add force-included ones (whose
-    holdings then get backfilled below).
+    holdings then get backfilled below). Force-include wins over the firm-type
+    drop, matching curation.screen_predicate.
     """
     labels = [f"{y}-Q{q}" for (y, q) in quarters]
     placeholders = ",".join("?" for _ in labels)
     with connect() as conn:
         rows = conn.execute(
-            f"""SELECT DISTINCT cik FROM quarter_screen
+            f"""SELECT DISTINCT cik, filer_type FROM quarter_screen
                 WHERE passes_screen = 1 AND quarter_label IN ({placeholders})""",
             labels,
         ).fetchall()
-    return curation.filter_ciks(str(r[0]) for r in rows)
+    excluded_types = set(classify.excluded_firm_types())
+    incl = curation.included_ciks()
+    candidates = []
+    for r in rows:
+        cik, ftype = str(r[0]), (r[1] or "")
+        if ftype in excluded_types and curation._norm(cik) not in incl:
+            continue  # hidden firm type, and not force-included
+        candidates.append(cik)
+    return curation.filter_ciks(candidates)
 
 
 def rebuild(quarters: list[tuple[int, int]], *, backfill_only: bool = False) -> dict:
@@ -101,7 +111,13 @@ def rebuild(quarters: list[tuple[int, int]], *, backfill_only: bool = False) -> 
     for (y, q) in quarters:
         run_quarter(y, q, only_ciks=universe, store_all=True, record_all=False)
 
+    # Reconcile each stored filing's screen flag with the fresh re-screen, so a
+    # filer that dropped out under tightened rules can't linger as a stale
+    # passes_screen=1 in the curated "shown" universe.
+    labels = [f"{y}-Q{q}" for (y, q) in quarters]
     with connect() as conn:
+        synced = sync_filings_screen(conn, labels)
+        log.info("Synced screen flag on %d filing row(s) from the ledger.", synced)
         issues = check_db(conn)
     log.info("Data-quality check: %s",
              "no issues" if not issues else f"{len(issues)} issue(s)")
