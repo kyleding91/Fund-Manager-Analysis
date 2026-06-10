@@ -20,7 +20,7 @@ from functools import lru_cache
 
 import yaml
 
-from . import classify, config
+from . import classify, config, roster
 
 CURATION_PATH = config.CONFIG_DIR / "curation.yaml"
 
@@ -117,16 +117,25 @@ def _sql_excluded_firm_types(alias: str) -> str:
 def screen_predicate(alias: str = "f.") -> str:
     """Return a SQL boolean expression for 'shown in the curated universe'.
 
-    One source of truth for "shown", combining three independent layers:
+    One source of truth for "shown". With a membership roster present
+    (config/roster.yaml — the STICKY universe), the rule is:
 
         cik in include
-        OR ( passes_screen = 1
+        OR ( cik in <active roster members>
              AND cik not in exclude
              AND filer_type not in <excluded firm types> )
 
-    i.e. a filer is shown when a human force-includes it (which WINS over every
-    exclusion path — R3), or when it mechanically passes the screen and is neither
-    hand-excluded nor an excluded firm type (market-makers by default).
+    i.e. membership (decided by the screen at admission time, kept until a human
+    removes it) replaces the per-quarter `passes_screen` check, so a member that
+    lapses below the criteria stays shown — by design. Force-include still WINS
+    over every exclusion path (R3), and the firm-type / curation excludes still
+    apply on top of membership.
+
+    Without a roster (fresh checkout, tests), this falls back to the original
+    per-quarter mechanical rule:
+
+        cik in include
+        OR ( passes_screen = 1 AND cik not in exclude AND filer_type not in ... )
 
     `alias` is the table alias prefix for the columns, e.g. "f." (default) or ""
     when the query has no alias. Safe to drop into a WHERE clause; always a valid
@@ -136,8 +145,11 @@ def screen_predicate(alias: str = "f.") -> str:
     incl = included_ciks()
     excluded_types = classify.excluded_firm_types()
 
-    passes = f"{alias}passes_screen = 1"
-    clauses = [passes]
+    if roster.has_roster():
+        base = _sql_cik_list(roster.active_ciks(), alias)
+    else:
+        base = f"{alias}passes_screen = 1"
+    clauses = [base]
     if excl:
         clauses.append(f"NOT ({_sql_cik_list(excl, alias)})")
     if excluded_types:
@@ -177,6 +189,25 @@ def explain(conn, cik, quarter: str) -> str:
     reason = row["reject_reason"] or ""
     ftype = row["filer_type"] or ""
     ft_excluded = ftype in set(classify.excluded_firm_types())
+
+    if roster.has_roster():
+        member = norm in roster.active_ciks()
+        shown = incl or (member and not excl and not ft_excluded)
+        if shown:
+            if incl and not (member and not excl and not ft_excluded):
+                return "shown — force-included via config/curation.yaml"
+            if not passes:
+                return (f"shown — roster member, lapsed this quarter "
+                        f"({reason or 'not_concentrated'}); kept pending review")
+            return "shown — roster member, passes the screen"
+        if member and ft_excluded:
+            return f"hidden — firm type '{ftype}' is excluded"
+        if member and excl:
+            return "hidden — excluded in config/curation.yaml"
+        if not member and passes:
+            return ("hidden — passes the screen but not on the roster "
+                    "(removed, or not yet admitted)")
+        return f"hidden — did not pass the screen ({reason or 'not_concentrated'})"
 
     shown = incl or (passes and not excl and not ft_excluded)
     if shown:

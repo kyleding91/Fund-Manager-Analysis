@@ -8,11 +8,11 @@
   <h1>{{ s.issuer }}</h1>
   <span class="badge">Held by {{ s.num_holders }} of {{ s.universe }} managers</span>
 </div>
-<p class="lede">Combined disclosed 13F position of <strong>{{ s.total_value }}</strong> across the screened universe in {{ s.quarter }}.</p>
+<p class="lede">Combined disclosed 13F position of <strong>{{ s.total_value }}</strong> ({{ s.total_shares }} shares) across the screened universe in {{ s.quarter }}.</p>
 
 <section class="section">
   <h2>Combined position over time</h2>
-  <p class="section-sub">Total disclosed 13F value and the number of screened managers holding {{ s.issuer }}, over the last {{ s.trend|length }} quarters.</p>
+  <p class="section-sub">Total disclosed 13F value, total shares held, and the number of screened managers holding {{ s.issuer }}, over the last {{ s.trend|length }} quarters. Shares are the cleanest accumulation signal — value also moves with the stock price.</p>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
     {% if s.value_svg %}
     <div class="card spark">
@@ -22,6 +22,15 @@
         {% for d in s.value_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }}</title></circle>{% endfor %}
         <text class="axislab" x="{{ s.value_svg.dots[0].x }}" y="{{ s.value_svg.height - 6 }}">{{ s.value_svg.first_label }}</text>
         <text class="axislab" x="{{ s.value_svg.width - 8 }}" y="{{ s.value_svg.height - 6 }}" text-anchor="end">{{ s.value_svg.last_label }}</text>
+      </svg>
+    </div>
+    <div class="card spark">
+      <div class="section-sub" style="margin:0 0 6px;">Total shares held</div>
+      <svg viewBox="0 0 {{ s.shares_svg.width }} {{ s.shares_svg.height }}" width="{{ s.shares_svg.width }}" height="{{ s.shares_svg.height }}" role="img" aria-label="Total shares held over time">
+        <polyline class="line" points="{{ s.shares_svg.polyline }}"></polyline>
+        {% for d in s.shares_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }} shares</title></circle>{% endfor %}
+        <text class="axislab" x="{{ s.shares_svg.dots[0].x }}" y="{{ s.shares_svg.height - 6 }}">{{ s.shares_svg.first_label }}</text>
+        <text class="axislab" x="{{ s.shares_svg.width - 8 }}" y="{{ s.shares_svg.height - 6 }}" text-anchor="end">{{ s.shares_svg.last_label }}</text>
       </svg>
     </div>
     <div class="card spark">

@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src import config, curation                                 # noqa: E402
+from rosterless import no_roster, restore_roster                  # noqa: E402
 from src.database import connect, init_db, upsert_fund           # noqa: E402
 from src.screener import AggHolding, ScreenedFund                # noqa: E402
 from src import insights, queries                                # noqa: E402
@@ -35,12 +36,13 @@ class TestNormalisation(unittest.TestCase):
 
 class TestCurationOverrides(unittest.TestCase):
     def setUp(self):
+        no_roster()  # predicate-shape tests assume the pre-roster fallback
         self._orig_path = curation.CURATION_PATH
         curation.reload()
 
     def tearDown(self):
         curation.CURATION_PATH = self._orig_path
-        curation.reload()
+        restore_roster()
 
     def _use(self, yaml_text: str):
         curation.CURATION_PATH = _write_curation(yaml_text)
@@ -138,6 +140,7 @@ def _h(name, cusip, value, shares):
 
 class TestCurationEndToEnd(unittest.TestCase):
     def setUp(self):
+        no_roster()  # synthetic CIKs aren't on the real roster
         self._orig_path = curation.CURATION_PATH
         self.db = Path(tempfile.mkdtemp()) / "t.db"
         with connect(self.db) as conn:
@@ -151,7 +154,7 @@ class TestCurationEndToEnd(unittest.TestCase):
 
     def tearDown(self):
         curation.CURATION_PATH = self._orig_path
-        curation.reload()
+        restore_roster()
 
     def test_excluded_manager_hidden_from_funds_list(self):
         curation.CURATION_PATH = _write_curation("exclude:\n  - cik: 200\n")

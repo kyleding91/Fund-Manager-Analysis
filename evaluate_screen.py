@@ -75,7 +75,8 @@ def _shown_rows(conn, quarter: str) -> list[dict]:
     rows = conn.execute(
         f"""SELECT f.cik, fn.manager_name, f.num_issuers, f.num_positions,
                    f.total_aum_usd, f.top_n_pct, f.filer_type,
-                   qs.meets_count, qs.meets_weight
+                   qs.meets_count, qs.meets_weight, qs.passes_screen,
+                   qs.reject_reason
             FROM filings f
             JOIN funds fn ON fn.cik = f.cik
             LEFT JOIN quarter_screen qs
@@ -87,10 +88,13 @@ def _shown_rows(conn, quarter: str) -> list[dict]:
     ).fetchall()
     out = []
     for r in rows:
+        lapsed = (r["passes_screen"] is not None) and not r["passes_screen"]
         if r["meets_count"]:
             branch = "count (<= max_holdings)"
         elif r["meets_weight"]:
             branch = "weight (top-N concentration)"
+        elif lapsed:
+            branch = "roster (lapsed)"
         else:
             branch = "include/override"
         out.append({
@@ -102,6 +106,8 @@ def _shown_rows(conn, quarter: str) -> list[dict]:
             "top_n_pct": r["top_n_pct"] or 0.0,
             "filer_type": r["filer_type"] or "",
             "branch": branch,
+            "lapsed": lapsed,
+            "reject_reason": r["reject_reason"] or "",
         })
     return out
 
@@ -126,9 +132,14 @@ def evaluate(conn, quarter: str) -> dict:
 
     total_aum = sum(s["aum_usd"] for s in shown)
 
-    # Suspected false positives still inside the shown universe.
-    suspected_fp = []
+    # Suspected false positives still inside the shown universe. Lapsed roster
+    # members are knowingly kept (sticky universe) — they go to the separate
+    # review list below rather than counting as false positives.
+    suspected_fp, lapsed_members = [], []
     for s in shown:
+        if s.get("lapsed"):
+            lapsed_members.append(s)
+            continue
         flags = []
         if s["num_issuers"] is not None and s["num_issuers"] < MIN_REASONABLE_ISSUERS:
             flags.append(f"only {s['num_issuers']} issuer(s)")
@@ -175,6 +186,7 @@ def evaluate(conn, quarter: str) -> dict:
         "shown_aum_usd": total_aum,
         "shown": shown,
         "suspected_false_positives": suspected_fp,
+        "lapsed_members": lapsed_members,
         "fp_fraction": fp_fraction,
         "benchmark": {
             "must_pass_total": len(bench["must_pass"]),
@@ -252,6 +264,22 @@ def _markdown(report: dict) -> str:
                 f"| {s['filer_type'] or '—'} | {'; '.join(s['flags'])} |")
         lines.append("")
 
+    lapsed = report.get("lapsed_members") or []
+    if lapsed:
+        lines += [
+            "## ⏸ Lapsed members — kept by default, FOR YOUR REVIEW", "",
+            "Sticky-roster members that failed this quarter's mechanical screen. "
+            "They stay shown until you act. To remove one, edit its entry in "
+            "`config/roster.yaml` (`status: removed` + a reason). To keep it, "
+            "do nothing.", "",
+            "| Manager | CIK | Issuers | AUM | Lapse reason |",
+            "|---|---|---:|---:|---|"]
+        for s in lapsed:
+            lines.append(
+                f"| {s['name']} | {s['cik']} | {s['num_issuers']} | {_b(s['aum_usd'])} "
+                f"| {s['reject_reason'] or '—'} |")
+        lines.append("")
+
     lines += ["## Shown filers (by AUM)", "",
               "| Manager | CIK | Issuers | AUM | Top-N % | Firm type | Branch |",
               "|---|---|---:|---:|---:|---|---|"]
@@ -296,6 +324,8 @@ def main() -> None:
           f"(of {report['benchmark']['must_exclude_total']})")
     print(f"  suspected FPs:         {len(report['suspected_false_positives'])} "
           f"({report['fp_fraction'] * 100:.1f}% of shown)")
+    print(f"  lapsed members:        {len(report.get('lapsed_members') or [])} "
+          f"(kept by default — see report for review)")
     print(f"  criteria: {sum(c.values())}/4 mechanical passed → "
           f"{'ACCEPTED' if report['accepted'] else 'NOT YET'}")
     print(f"  report: {AUDIT_DIR / 'screen_audit.md'}")

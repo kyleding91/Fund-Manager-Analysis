@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.database import connect, init_db, upsert_fund          # noqa: E402
 from src.screener import AggHolding, ScreenedFund               # noqa: E402
+from rosterless import no_roster, restore_roster   # noqa: E402
 from src import config                                          # noqa: E402
 
 
@@ -32,6 +33,7 @@ def _fund(cik, name, accession, quarter, period, holdings, date_filed):
 
 class TestBuildSite(unittest.TestCase):
     def setUp(self):
+        no_roster()  # build from the mechanical screen, not the repo roster
         self.tmp = Path(tempfile.mkdtemp())
         self.db = self.tmp / "t.db"
         with connect(self.db) as conn:
@@ -63,6 +65,7 @@ class TestBuildSite(unittest.TestCase):
         config.DB_PATH = self.db
 
     def tearDown(self):
+        restore_roster()
         config.DB_PATH = self._orig_db
 
     def test_build_produces_expected_pages(self):
@@ -101,6 +104,16 @@ class TestBuildSite(unittest.TestCase):
         self.assertIn("../funds/1112520.html", stock_html)
         stocks_html = (out / "stocks.html").read_text(encoding="utf-8")
         self.assertIn("stocks/57636Q.html", stocks_html)
+
+        # The quarterly money-moves page exists, is linked in the nav, and
+        # names the manager behind a move.
+        moves = out / "moves.html"
+        self.assertTrue(moves.exists())
+        moves_html = moves.read_text(encoding="utf-8")
+        self.assertIn("How money moved this quarter", moves_html)
+        self.assertIn("Akre Capital Management", moves_html)   # KKR new buy
+        home = (out / "index.html").read_text(encoding="utf-8")
+        self.assertIn('href="moves.html"', home)
 
         # Generator reports the right shape.
         self.assertEqual(res["quarter"], "2025-Q1")

@@ -328,10 +328,12 @@ def stock_detail(conn, issuer_cusip: str, quarter: str, max_quarters: int = 5) -
     } for cik in prev_val if cik not in cur_ciks]
     counts["exited"] = len(exits)
 
-    # 5-quarter trend: combined value + holder count (shown universe only).
+    # 5-quarter trend: combined value + holder count + total shares (shown
+    # universe only).
     tr = list(insights.issuer_trend(conn, issuer_cusip).itertuples(index=False))[-max_quarters:]
     value_pts = [{"label": t.quarter, "value": float(t.total_value or 0)} for t in tr]
     holder_pts = [{"label": t.quarter, "value": int(t.holders or 0)} for t in tr]
+    share_pts = [{"label": t.quarter, "value": float(t.total_shares or 0)} for t in tr]
 
     universe = _shown_manager_count(conn, quarter)
     return {
@@ -342,6 +344,7 @@ def stock_detail(conn, issuer_cusip: str, quarter: str, max_quarters: int = 5) -
         "num_holders": len(holders),
         "universe": universe,
         "total_value": usd(total_value),
+        "total_shares": _shares(share_pts[-1]["value"]) if share_pts else "0",
         "holders": holders,
         "new_buyers": new_buyers,
         "exits": exits,
@@ -349,8 +352,141 @@ def stock_detail(conn, issuer_cusip: str, quarter: str, max_quarters: int = 5) -
                    for k in ("new", "added", "trimmed", "exited")],
         "value_svg": aum_timeline_svg(value_pts),
         "holders_svg": aum_timeline_svg(holder_pts, fmt=lambda v: f"{int(v)}"),
+        "shares_svg": aum_timeline_svg(share_pts, fmt=_shares),
         "trend": [{"quarter": t.quarter, "value": usd(float(t.total_value or 0)),
-                   "holders": int(t.holders or 0)} for t in tr],
+                   "holders": int(t.holders or 0),
+                   "shares": _shares(float(t.total_shares or 0))} for t in tr],
+    }
+
+
+def _shares(x: float) -> str:
+    """Compact share count: 59,700,000 -> '59.7M'."""
+    ax = abs(x)
+    if ax >= 1e9:
+        return f"{x / 1e9:,.2f}B"
+    if ax >= 1e6:
+        return f"{x / 1e6:,.1f}M"
+    if ax >= 1e4:
+        return f"{x / 1e3:,.0f}K"
+    return f"{x:,.0f}"
+
+
+def _share_change(now: float, prev: float) -> str:
+    """Human-readable share-count move: '+13.2M sh (+41%)'."""
+    delta = now - prev
+    if delta == 0:
+        return "unchanged"
+    sign = "+" if delta > 0 else "−"
+    txt = f"{sign}{_shares(abs(delta))} sh"
+    if prev > 0:
+        txt += f" ({sign}{abs(delta) / prev * 100:,.0f}%)"
+    return txt
+
+
+# Plain-English versions of the mechanical reject reasons, for the lapsed list.
+_LAPSE_REASONS = {
+    "aum_below_floor": "dipped below $2B",
+    "not_concentrated": "drifted past the concentration limits",
+    "below_min_holdings": "fewer than 3 names",
+    "mostly_etfs": "book is now mostly ETFs",
+    "too_many_holdings_for_weight": "top-heavy but holds more than 50 names",
+    "confidential": "filed confidentially",
+}
+
+
+def _universe_stats(conn, quarter: str) -> dict:
+    row = conn.execute(
+        f"""SELECT COUNT(DISTINCT f.cik) AS n, SUM(f.total_aum_usd) AS aum
+            FROM filings f
+            WHERE f.is_current = 1 AND {curation.screen_predicate('f.')}
+              AND f.quarter_label = ?""",
+        (quarter,),
+    ).fetchone()
+    return {"count": int(row["n"] or 0), "aum_usd": float(row["aum"] or 0)}
+
+
+def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10) -> dict | None:
+    """Everything the "This quarter" money-moves page needs, or None if there
+    is no prior quarter to compare against."""
+    flows = insights.quarter_money_flows(conn, quarter)
+    if flows is None:
+        return None
+    pairs = flows["pairs"]
+    prev_q = flows["prev_quarter"]
+
+    stocks_agg = insights.aggregate_stock_flows(pairs)
+
+    def _stock_row(s):
+        return {
+            "cusip": s["cusip"], "issuer": s["issuer"],
+            "net_flow": usd(abs(s["net_flow_usd"])),
+            "net_flow_usd": s["net_flow_usd"],
+            "share_change": _share_change(s["shares_now"], s["shares_prev"]),
+            "n_new": s["n_new"], "n_added": s["n_added"],
+            "n_trimmed": s["n_trimmed"], "n_exited": s["n_exited"],
+            "holders_now": s["holders_now"], "holders_prev": s["holders_prev"],
+            "value": usd(s["value_usd"]),
+        }
+
+    money_in = [_stock_row(s) for s in stocks_agg if s["net_flow_usd"] > 0][:top_stocks]
+    money_out = [_stock_row(s) for s in reversed(stocks_agg)
+                 if s["net_flow_usd"] < 0][:top_stocks]
+
+    emoji = {"new": "🟢", "added": "🔼", "trimmed": "🔽", "exited": "🔴"}
+
+    def _pair_row(m):
+        return {
+            "cik": m["cik"], "manager_name": m["manager_name"],
+            "cusip": m["cusip"], "issuer": m["issuer"],
+            "change_type": m["change_type"], "emoji": emoji.get(m["change_type"], ""),
+            "flow": usd(abs(m["flow_usd"])), "flow_usd": m["flow_usd"],
+            "share_change": _share_change(m["shares"], m["prev_shares"]),
+        }
+
+    moved = sorted(pairs, key=lambda m: m["flow_usd"], reverse=True)
+    biggest_buys = [_pair_row(m) for m in moved[:top_moves] if m["flow_usd"] > 0]
+    biggest_sells = [_pair_row(m) for m in reversed(moved[-top_moves:])
+                     if m["flow_usd"] < 0]
+
+    gross_in = sum(m["flow_usd"] for m in pairs if m["flow_usd"] > 0)
+    gross_out = sum(m["flow_usd"] for m in pairs if m["flow_usd"] < 0)
+
+    chg = insights.screen_changes(conn, quarter) or {"entered": [], "left": [],
+                                                     "lapsed": []}
+    uni_now = _universe_stats(conn, quarter)
+    uni_prev = _universe_stats(conn, prev_q)
+    compared = len({m["cik"] for m in pairs})
+
+    return {
+        "quarter": quarter,
+        "prev_quarter": prev_q,
+        "universe": {
+            "count": uni_now["count"], "aum": usd(uni_now["aum_usd"]),
+            "prev_count": uni_prev["count"], "prev_aum": usd(uni_prev["aum_usd"]),
+            "compared": compared,
+        },
+        "gross_in": usd(gross_in),
+        "gross_out": usd(abs(gross_out)),
+        "net": usd(abs(gross_in + gross_out)),
+        "net_positive": (gross_in + gross_out) >= 0,
+        "money_in": money_in,
+        "money_out": money_out,
+        "biggest_buys": biggest_buys,
+        "biggest_sells": biggest_sells,
+        "entered": [{"cik": str(r["cik"]), "name": r["manager_name"],
+                     "aum": usd(float(r["total_aum_usd"] or 0)),
+                     "num_issuers": int(r["num_issuers"] or 0)}
+                    for r in chg["entered"]],
+        "left": [{"cik": str(r["cik"]), "name": r["manager_name"],
+                  "aum": usd(float(r["total_aum_usd"] or 0)),
+                  "num_issuers": int(r["num_issuers"] or 0)}
+                 for r in chg["left"]],
+        "lapsed": [{"cik": str(r["cik"]), "name": r["manager_name"],
+                    "aum": usd(float(r["total_aum_usd"] or 0)),
+                    "num_issuers": int(r["num_issuers"] or 0),
+                    "reason": _LAPSE_REASONS.get(r.get("reject_reason") or "",
+                                                 r.get("reject_reason") or "")}
+                   for r in chg.get("lapsed", [])],
     }
 
 

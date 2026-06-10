@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}This quarter's money moves — {{ site_name }} ({{ m.quarter }}){% endblock %}
+{% block description %}Where the screened concentrated value managers moved money in {{ m.quarter }}: estimated net buying and selling by company, the biggest individual position changes, and managers entering or leaving the screen.{% endblock %}
+{% block content %}
+
+<section class="hero" style="padding:40px 0 20px;">
+  <div class="eyebrow">Money moves · {{ m.quarter }} vs {{ m.prev_quarter }}</div>
+  <h1>How money moved this quarter</h1>
+  <p class="lede">Estimated net buying and selling across the member universe — computed from
+  <em>share-count</em> changes (so a stock that merely went up in price doesn't look like buying).
+  The same members are compared against their own prior filings; membership changes are listed
+  at the bottom.</p>
+</section>
+
+<div class="kpis" style="margin-bottom:26px;">
+  <div class="kpi"><div class="label">Members compared</div><div class="value">{{ m.universe.compared }}</div><div class="hint">of {{ m.universe.count }} members — those with filings in both quarters</div></div>
+  <div class="kpi"><div class="label">Est. money in</div><div class="value delta-pos">{{ m.gross_in }}</div></div>
+  <div class="kpi"><div class="label">Est. money out</div><div class="value delta-neg">{{ m.gross_out }}</div></div>
+  <div class="kpi"><div class="label">Net</div><div class="value {{ 'delta-pos' if m.net_positive else 'delta-neg' }}">{{ '+' if m.net_positive else '−' }}{{ m.net }}</div></div>
+</div>
+
+<section class="section">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px;">
+    <div>
+      <h2>Where money moved in</h2>
+      <p class="section-sub">Companies with the largest estimated net buying.</p>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th class="no-sort">Company</th><th class="no-sort num">Shares bought</th><th class="no-sort num">Est. value</th><th class="no-sort num">Holders</th></tr></thead>
+          <tbody>
+            {% for s in m.money_in %}
+            <tr>
+              <td><a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a></td>
+              <td class="num delta-pos">{{ s.share_change }}</td>
+              <td class="num">{{ s.net_flow }}</td>
+              <td class="num">{{ s.holders_prev }} → {{ s.holders_now }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2>Where money moved out</h2>
+      <p class="section-sub">Companies with the largest estimated net selling.</p>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th class="no-sort">Company</th><th class="no-sort num">Shares sold</th><th class="no-sort num">Est. value</th><th class="no-sort num">Holders</th></tr></thead>
+          <tbody>
+            {% for s in m.money_out %}
+            <tr>
+              <td><a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a></td>
+              <td class="num delta-neg">{{ s.share_change }}</td>
+              <td class="num">{{ s.net_flow }}</td>
+              <td class="num">{{ s.holders_prev }} → {{ s.holders_now }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Biggest individual moves</h2>
+  <p class="section-sub">The largest single position changes by any one manager — the quarter's boldest calls.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px;">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th class="no-sort">Manager</th><th class="no-sort">Bought</th><th class="no-sort num">Shares</th><th class="no-sort num">Est. value</th></tr></thead>
+        <tbody>
+          {% for p in m.biggest_buys %}
+          <tr>
+            <td><a href="{{ root }}funds/{{ p.cik }}.html">{{ p.manager_name }}</a></td>
+            <td><span class="chg chg-{{ p.change_type }}">{{ p.emoji }}</span> <a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a></td>
+            <td class="num delta-pos">{{ p.share_change }}</td>
+            <td class="num">{{ p.flow }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th class="no-sort">Manager</th><th class="no-sort">Sold</th><th class="no-sort num">Shares</th><th class="no-sort num">Est. value</th></tr></thead>
+        <tbody>
+          {% for p in m.biggest_sells %}
+          <tr>
+            <td><a href="{{ root }}funds/{{ p.cik }}.html">{{ p.manager_name }}</a></td>
+            <td><span class="chg chg-{{ p.change_type }}">{{ p.emoji }}</span> <a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a></td>
+            <td class="num delta-neg">{{ p.share_change }}</td>
+            <td class="num">{{ p.flow }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Membership changes</h2>
+  <p class="section-sub">The universe is a <em>sticky roster</em>: managers join by passing the screen and
+  stay until removed by hand. New members joined this quarter; lapsed members no longer meet the
+  criteria but are <strong>kept by default</strong> pending review.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;">
+    <div class="card">
+      <h3 class="qsub" style="margin-top:0;">🟢 New members ({{ m.entered|length }})</h3>
+      {% if m.entered %}
+      <ul class="plain-list">
+        {% for e in m.entered %}
+        <li><a href="{{ root }}funds/{{ e.cik }}.html">{{ e.name }}</a> <span class="muted">{{ e.aum }} · {{ e.num_issuers }} names</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">None this quarter.</p>{% endif %}
+    </div>
+    <div class="card">
+      <h3 class="qsub" style="margin-top:0;">⏸ Lapsed — kept pending review ({{ m.lapsed|length }})</h3>
+      {% if m.lapsed %}
+      <ul class="plain-list">
+        {% for e in m.lapsed %}
+        <li><a href="{{ root }}funds/{{ e.cik }}.html">{{ e.name }}</a> <span class="muted">{{ e.aum }} · {{ e.num_issuers }} names · {{ e.reason }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">Every member meets the criteria this quarter.</p>{% endif %}
+    </div>
+    {% if m.left %}
+    <div class="card">
+      <h3 class="qsub" style="margin-top:0;">⚪ Left ({{ m.left|length }})</h3>
+      <ul class="plain-list">
+        {% for e in m.left %}
+        <li><a href="{{ root }}funds/{{ e.cik }}.html">{{ e.name }}</a> <span class="muted">was {{ e.aum }} · {{ e.num_issuers }} names</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<p class="section-sub" style="margin-top:18px;">How these numbers are estimated: net flow =
+change in shares × the position's implied share price (disclosed value ÷ shares), summed across
+managers present in the screen both quarters. 13F data is long-only U.S. positions with a
+45-day lag. See the <a href="{{ root }}methodology.html">methodology</a>.</p>
+
+{% endblock %}

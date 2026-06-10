@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.database import connect, init_db, upsert_fund          # noqa: E402
 from src.screener import AggHolding, ScreenedFund               # noqa: E402
 from src import insights, site_data                             # noqa: E402
+from rosterless import no_roster, restore_roster                  # noqa: E402
 
 
 def _fund(cik, name, accession, quarter, period, holdings, date_filed):
@@ -27,6 +28,7 @@ def _h(name, cusip, value, shares):
 
 class TestInsights(unittest.TestCase):
     def setUp(self):
+        no_roster()  # synthetic CIKs aren't on the real roster
         self.db = Path(tempfile.mkdtemp()) / "t.db"
         with connect(self.db) as conn:
             init_db(conn)
@@ -44,6 +46,9 @@ class TestInsights(unittest.TestCase):
             upsert_fund(conn, _fund(
                 "B", "Bravo Fund", "b-q1", "2025-Q1", "2025-03-31",
                 [_h("ALPHA", "AAA000100", 3e9, 2000)], "2025-05-15"))
+
+    def tearDown(self):
+        restore_roster()
 
     def test_previous_quarter(self):
         with connect(self.db) as conn:
@@ -103,6 +108,57 @@ class TestInsights(unittest.TestCase):
         self.assertEqual(counts["exited"], 0)     # nobody dropped ALPHA
         self.assertEqual([b["name"] for b in d["new_buyers"]], ["Bravo Fund"])
         self.assertEqual(len(d["trend"]), 2)
+        # Total shares across the shown universe: Q4 = A's 1000; Q1 = A 1500 + B 2000.
+        self.assertEqual([t["shares"] for t in d["trend"]], ["1,000", "3,500"])
+        self.assertEqual(d["total_shares"], "3,500")
+        self.assertTrue(d["shares_svg"])  # third sparkline renders
+
+    def test_quarter_money_flows_same_store(self):
+        """Flows compare only managers shown in BOTH quarters; Δshares x price."""
+        with connect(self.db) as conn:
+            flows = insights.quarter_money_flows(conn, "2025-Q1")
+        self.assertEqual(flows["prev_quarter"], "2024-Q4")
+        # Fund B exists only in Q1 -> excluded entirely (same-store rule).
+        self.assertNotIn("B", {p["cik"] for p in flows["pairs"]})
+        by = {p["cusip"]: p for p in flows["pairs"]}
+        # ALPHA: A went 1000 -> 1500 shares at implied $1.6M/sh (2.4e9/1500).
+        self.assertEqual(by["AAA000"]["change_type"], "added")
+        self.assertAlmostEqual(by["AAA000"]["flow_usd"], 500 * (2.4e9 / 1500))
+        # GAMMA: brand-new 400 shares at implied $2.5M/sh = +1e9.
+        self.assertEqual(by["GGG000"]["change_type"], "new")
+        self.assertAlmostEqual(by["GGG000"]["flow_usd"], 1e9)
+        # BETA: fully exited 800 shares at the PRIOR implied price = -1.5e9.
+        self.assertEqual(by["BBB000"]["change_type"], "exited")
+        self.assertAlmostEqual(by["BBB000"]["flow_usd"], -1.5e9)
+
+    def test_screen_changes(self):
+        with connect(self.db) as conn:
+            chg = insights.screen_changes(conn, "2025-Q1")
+        self.assertEqual([r["manager_name"] for r in chg["entered"]], ["Bravo Fund"])
+        self.assertEqual(chg["left"], [])
+
+    def test_quarter_moves_page_data(self):
+        with connect(self.db) as conn:
+            m = site_data.quarter_moves(conn, "2025-Q1")
+        self.assertEqual(m["universe"]["compared"], 1)      # only Fund A
+        self.assertEqual(m["universe"]["count"], 2)         # A + B shown now
+        # gross in = ALPHA add (0.8e9) + GAMMA new (1e9); out = BETA exit (1.5e9)
+        self.assertEqual(m["gross_in"], "$1.80B")
+        self.assertEqual(m["gross_out"], "$1.50B")
+        self.assertTrue(m["net_positive"])
+        self.assertEqual([s["issuer"] for s in m["money_in"]], ["GAMMA", "ALPHA"])
+        self.assertEqual([s["issuer"] for s in m["money_out"]], ["BETA"])
+        self.assertEqual(m["biggest_buys"][0]["issuer"], "GAMMA")
+        self.assertEqual(m["biggest_sells"][0]["issuer"], "BETA")
+        # Share-count change is shown alongside the $ estimate.
+        by_issuer = {s["issuer"]: s for s in m["money_in"] + m["money_out"]}
+        self.assertEqual(by_issuer["GAMMA"]["share_change"], "+400 sh")   # brand new
+        self.assertEqual(by_issuer["ALPHA"]["share_change"], "+500 sh (+50%)")
+        self.assertEqual(by_issuer["BETA"]["share_change"], "−800 sh (−100%)")
+        self.assertEqual([e["name"] for e in m["entered"]], ["Bravo Fund"])
+        # No prior quarter at the very start of history -> page data is None.
+        with connect(self.db) as conn:
+            self.assertIsNone(site_data.quarter_moves(conn, "2024-Q4"))
 
     def test_stock_detail_exit(self):
         """A manager that dropped a stock shows up as an exit on that stock's page."""

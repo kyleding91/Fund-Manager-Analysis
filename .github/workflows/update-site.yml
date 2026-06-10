@@ -85,12 +85,14 @@ jobs:
       - name: Build the static website
         run: python build_site.py --out site
 
-      - name: Commit the refreshed database
+      - name: Commit the refreshed database (and any roster auto-joins)
         id: commit
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f data/13f.db
+          # config/roster.yaml is the sticky membership registry: rebuild_universe
+          # appends new qualifiers automatically, so commit it alongside the data.
+          git add -f data/13f.db config/roster.yaml
           if git diff --staged --quiet; then
             echo "No database changes to commit."
             echo "changed=false" >> "$GITHUB_OUTPUT"

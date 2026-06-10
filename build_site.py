@@ -125,6 +125,13 @@ def build(out_dir: Path, quarter: str | None = None) -> dict:
            env.get_template("methodology.html").render(root="", active="methodology",
                                                        **common))
     pages += 1
+    # this quarter's money moves (needs a prior quarter to compare against)
+    moves = sd.quarter_moves(conn, quarter)
+    if moves:
+        _write(out_dir / "moves.html",
+               env.get_template("moves.html").render(root="", active="moves",
+                                                     m=moves, **common))
+        pages += 1
     # CSV export
     _write(out_dir / "data" / f"managers-{_quarter_slug(quarter)}.csv",
            _managers_csv(funds))

@@ -24,8 +24,11 @@ stop and report — do not improvise fixes to Python code.
 7. Rebuild the site:  python3 build_site.py
 
 Then summarize for a non-technical reader:
-- the new quarter label and how many managers/AUM are in the shown universe;
-- managers that entered or left the screen vs the prior quarter;
+- the new quarter label and how many members/AUM are in the shown universe;
+- NEW members that auto-joined the roster this quarter;
+- LAPSED members (kept by default — list each with its lapse reason and remind
+  the user this is their review queue: keep = do nothing, remove = edit
+  config/roster.yaml). Never edit the roster yourself;
 - the audit verdict and anything needing a human decision;
 - explicitly remind the user that NOTHING was committed or pushed — publishing
   happens only when they commit and push (or the GitHub automation runs).

@@ -25,6 +25,14 @@ Procedure:
 4. Judge each: is this a fundamental stock-picker, or a corporate/passive/
    sovereign vehicle that slipped through?
 
+Sticky-roster nuance (config/roster.yaml): the universe keeps members that no
+longer pass the mechanical screen ("lapsed" — listed in their own section of
+the audit report). Lapsed members are NOT false positives — they're kept by the
+owner's design, pending the owner's review. Your job there is to advise: for
+each lapsed member, say whether you'd keep (temporary dip, still a concentrated
+manager) or recommend removal (structurally changed — e.g. 100+ names, multi-
+strat, passive). NEVER edit roster.yaml yourself; only the owner removes members.
+
 Reporting and fix rules:
 - Recommend fixes in this preference order: (1) a threshold in
   config/screen.yaml, (2) a per-CIK override in config/firm_types.yaml,

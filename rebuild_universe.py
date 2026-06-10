@@ -35,7 +35,7 @@ import argparse
 import logging
 import re
 
-from src import classify, config, curation
+from src import classify, config, curation, roster
 from src.database import connect, init_db, sync_filings_screen
 from src.pipeline import run_quarter
 from src.quality import check_db
@@ -91,7 +91,38 @@ def universe_ciks(quarters: list[tuple[int, int]]) -> set[str]:
         if ftype in excluded_types and curation._norm(cik) not in incl:
             continue  # hidden firm type, and not force-included
         candidates.append(cik)
-    return curation.filter_ciks(candidates)
+    # Sticky-roster members keep their history loaded even while lapsed.
+    keep = curation.filter_ciks(candidates)
+    keep |= roster.active_ciks()
+    return keep
+
+
+def _roster_additions(quarter: str) -> list[dict]:
+    """New qualifiers this quarter that may join the roster.
+
+    A filer joins when it passes the mechanical screen and is not an excluded
+    firm type, not curation-excluded, and not already on the roster (any
+    status — a human-removed member is never auto-re-added).
+    """
+    excluded_types = set(classify.excluded_firm_types())
+    on_roster = roster.all_ciks()
+    excl = curation.excluded_ciks()
+    out = []
+    with connect() as conn:
+        rows = conn.execute(
+            """SELECT cik, manager_name, filer_type FROM quarter_screen
+               WHERE passes_screen = 1 AND quarter_label = ?""",
+            (quarter,),
+        ).fetchall()
+    for r in rows:
+        cik = curation._norm(str(r["cik"]))
+        if cik in on_roster or cik in excl:
+            continue
+        if (r["filer_type"] or "") in excluded_types:
+            continue
+        out.append({"cik": cik, "name": r["manager_name"],
+                    "joined": quarter, "added_by": "screen"})
+    return out
 
 
 def rebuild(quarters: list[tuple[int, int]], *, backfill_only: bool = False) -> dict:
@@ -102,6 +133,18 @@ def rebuild(quarters: list[tuple[int, int]], *, backfill_only: bool = False) -> 
         log.info("=== Pass 1/3: re-screen %d quarter(s): %s ===", len(quarters), qlabels)
         for (y, q) in quarters:
             run_quarter(y, q)  # records ledger for all, stores qualifiers
+
+    # Roster maintenance (sticky universe): new qualifiers in the LATEST quarter
+    # auto-join the membership roster; nobody is ever auto-removed. Skipped when
+    # no roster file exists (pre-roster / test environments).
+    if roster.has_roster():
+        latest = max(f"{y}-Q{q}" for (y, q) in quarters)
+        new_members = _roster_additions(latest)
+        if new_members:
+            n = roster.add_members(new_members)
+            log.info("Roster: %d new member(s) joined in %s.", n, latest)
+        else:
+            log.info("Roster: no new qualifiers in %s.", latest)
 
     universe = universe_ciks(quarters)
     log.info("=== Pass 2/3: universe = %d managers qualifying in >=1 quarter ===",

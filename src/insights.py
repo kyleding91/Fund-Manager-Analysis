@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from . import curation
+from . import curation, roster
 
 
 # --- helpers -------------------------------------------------------------
@@ -75,7 +75,8 @@ def issuer_trend(conn, issuer_cusip: str) -> pd.DataFrame:
     return pd.read_sql_query(
         f"""SELECT f.quarter_label AS quarter,
                   COUNT(DISTINCT f.cik) AS holders,
-                  SUM(h.value_usd)      AS total_value
+                  SUM(h.value_usd)      AS total_value,
+                  SUM(h.shares)         AS total_shares
            FROM holdings h JOIN filings f ON f.id = h.filing_id
            WHERE h.issuer_cusip = :cusip AND f.is_current = 1
              AND {curation.screen_predicate("f.")}
@@ -120,6 +121,190 @@ def new_managers(conn, quarter: str) -> pd.DataFrame:
            ORDER BY f.total_aum_usd DESC""",
         conn, params={"q": quarter, "prev": prev},
     )
+
+
+def _positions_by_pair(conn, quarter: str) -> dict:
+    """{(cik, issuer_cusip): position} for every shown manager in a quarter.
+
+    One entry per manager x company, with share classes/options aggregated by
+    the 6-digit issuer CUSIP (same convention as the rest of the project).
+    """
+    rows = conn.execute(
+        f"""SELECT f.cik, h.issuer_cusip AS cusip,
+                  MAX(h.name_of_issuer)  AS issuer,
+                  MAX(fn.manager_name)   AS manager_name,
+                  SUM(h.value_usd)       AS value_usd,
+                  SUM(h.shares)          AS shares
+           FROM holdings h
+           JOIN filings f ON f.id = h.filing_id
+           JOIN funds fn  ON fn.cik = f.cik
+           WHERE f.is_current = 1 AND {curation.screen_predicate("f.")}
+             AND f.quarter_label = ?
+             AND h.issuer_cusip IS NOT NULL AND h.issuer_cusip != ''
+           GROUP BY f.cik, h.issuer_cusip""",
+        (quarter,),
+    ).fetchall()
+    return {(str(r["cik"]), r["cusip"]): {
+        "issuer": r["issuer"], "manager_name": r["manager_name"],
+        "value_usd": float(r["value_usd"] or 0), "shares": float(r["shares"] or 0),
+    } for r in rows}
+
+
+def quarter_money_flows(conn, quarter: str) -> dict | None:
+    """Estimated dollar flows for every (manager, company) pair vs last quarter.
+
+    The honest way to measure "money moving": a position's VALUE change mixes
+    real buying/selling with price moves, so instead we estimate
+        flow = (shares now - shares before) x implied share price
+    where the implied price is value/shares from the current filing (or the
+    prior one for full exits). Pairs with no share counts (rare: options-only
+    or principal-amount lines) fall back to the raw value change.
+
+    "Same-store" rule: flows are computed only across managers shown in BOTH
+    quarters. A manager that just entered the screen would otherwise count its
+    whole book as "new buying" (and a leaver as selling) — that's universe
+    churn, not money moving; entrants/leavers are reported separately by
+    screen_changes().
+
+    Returns {"prev_quarter", "pairs": [...]} or None when there is no prior
+    quarter to compare against. Each pair: cik, manager_name, cusip, issuer,
+    change_type (new/exited/added/trimmed/unchanged), flow_usd, value_usd
+    (current, 0 for exits), prev_value_usd.
+    """
+    prev_q = previous_quarter(conn, quarter)
+    if prev_q is None:
+        return None
+    cur = _positions_by_pair(conn, quarter)
+    prev = _positions_by_pair(conn, prev_q)
+
+    # Same-store: only managers present in both quarters' shown universes.
+    both = ({cik for (cik, _) in cur} & {cik for (cik, _) in prev})
+    cur = {k: v for k, v in cur.items() if k[0] in both}
+    prev = {k: v for k, v in prev.items() if k[0] in both}
+
+    pairs = []
+    for key in cur.keys() | prev.keys():
+        c, p = cur.get(key), prev.get(key)
+        sh_c = c["shares"] if c else 0.0
+        sh_p = p["shares"] if p else 0.0
+        v_c = c["value_usd"] if c else 0.0
+        v_p = p["value_usd"] if p else 0.0
+        if c and not p:
+            change = "new"
+        elif p and not c:
+            change = "exited"
+        elif sh_c > sh_p:
+            change = "added"
+        elif sh_c < sh_p:
+            change = "trimmed"
+        else:
+            change = "unchanged"
+        if sh_c > 0:
+            price = v_c / sh_c
+        elif sh_p > 0:
+            price = v_p / sh_p
+        else:
+            price = 0.0
+        flow = (sh_c - sh_p) * price if price > 0 else (v_c - v_p)
+        src = c or p
+        pairs.append({
+            "cik": key[0], "cusip": key[1],
+            "manager_name": src["manager_name"], "issuer": src["issuer"],
+            "change_type": change, "flow_usd": flow,
+            "value_usd": v_c, "prev_value_usd": v_p,
+            "shares": sh_c, "prev_shares": sh_p,
+        })
+    return {"prev_quarter": prev_q, "pairs": pairs}
+
+
+def aggregate_stock_flows(pairs: list[dict]) -> list[dict]:
+    """Roll per-(manager, company) flows up to one row per company.
+
+    Each row: cusip, issuer, counts of new/exited/added/trimmed managers,
+    holders now/before, estimated net flow (and gross in/out), and the combined
+    current position value. Sorted by net flow descending.
+    """
+    by_stock: dict[str, dict] = {}
+    for m in pairs:
+        s = by_stock.setdefault(m["cusip"], {
+            "cusip": m["cusip"], "issuer": m["issuer"],
+            "n_new": 0, "n_exited": 0, "n_added": 0, "n_trimmed": 0,
+            "holders_now": 0, "holders_prev": 0,
+            "inflow_usd": 0.0, "outflow_usd": 0.0, "net_flow_usd": 0.0,
+            "value_usd": 0.0, "shares_now": 0.0, "shares_prev": 0.0,
+        })
+        kind = m["change_type"]
+        if kind in ("new", "exited", "added", "trimmed"):
+            s[f"n_{kind}"] += 1
+        if kind != "exited":
+            s["holders_now"] += 1
+        if kind != "new":
+            s["holders_prev"] += 1
+        if m["flow_usd"] >= 0:
+            s["inflow_usd"] += m["flow_usd"]
+        else:
+            s["outflow_usd"] += m["flow_usd"]
+        s["net_flow_usd"] += m["flow_usd"]
+        s["value_usd"] += m["value_usd"]
+        s["shares_now"] += m["shares"]
+        s["shares_prev"] += m["prev_shares"]
+    return sorted(by_stock.values(), key=lambda s: s["net_flow_usd"], reverse=True)
+
+
+def screen_changes(conn, quarter: str) -> dict | None:
+    """Membership changes for the quarter.
+
+    With a sticky roster (config/roster.yaml): `entered` = members whose first
+    qualifying quarter is this one; `lapsed` = active members kept on the
+    roster even though they failed this quarter's mechanical screen (each with
+    the reject reason — the human review queue). Nobody leaves automatically.
+
+    Without a roster (pre-roster / tests): falls back to the per-quarter
+    diff — `entered` / `left` vs the previous quarter.
+    """
+    prev_q = previous_quarter(conn, quarter)
+    if prev_q is None:
+        return None
+
+    def shown(q):
+        rows = conn.execute(
+            f"""SELECT f.cik, fn.manager_name, f.total_aum_usd, f.num_issuers
+               FROM filings f JOIN funds fn ON fn.cik = f.cik
+               WHERE f.is_current = 1 AND {curation.screen_predicate("f.")}
+                 AND f.quarter_label = ?""",
+            (q,),
+        ).fetchall()
+        return {curation._norm(str(r["cik"])): dict(r) for r in rows}
+
+    cur = shown(quarter)
+
+    if roster.has_roster():
+        joined = roster.joined_in(quarter)
+        entered = sorted((cur[c] for c in cur if c in joined),
+                         key=lambda r: r["total_aum_usd"] or 0, reverse=True)
+        rows = conn.execute(
+            f"""SELECT f.cik, fn.manager_name, f.total_aum_usd, f.num_issuers,
+                      qs.reject_reason
+               FROM filings f
+               JOIN funds fn ON fn.cik = f.cik
+               JOIN quarter_screen qs ON qs.cik = f.cik
+                    AND qs.quarter_label = f.quarter_label
+               WHERE f.is_current = 1 AND f.quarter_label = ?
+                 AND {curation.screen_predicate("f.")}
+                 AND qs.passes_screen = 0
+               ORDER BY f.total_aum_usd DESC""",
+            (quarter,),
+        ).fetchall()
+        lapsed = [dict(r) for r in rows]
+        return {"prev_quarter": prev_q, "entered": entered,
+                "lapsed": lapsed, "left": []}
+
+    prev = shown(prev_q)
+    entered = sorted((cur[c] for c in cur.keys() - prev.keys()),
+                     key=lambda r: r["total_aum_usd"] or 0, reverse=True)
+    left = sorted((prev[c] for c in prev.keys() - cur.keys()),
+                  key=lambda r: r["total_aum_usd"] or 0, reverse=True)
+    return {"prev_quarter": prev_q, "entered": entered, "left": left, "lapsed": []}
 
 
 def qoq_changes(conn, cik: str, quarter: str) -> pd.DataFrame | None:

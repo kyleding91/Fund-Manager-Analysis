@@ -1,0 +1,793 @@
+# Universe membership roster (STICKY) ------------------------------------------
+#
+# One entry per manager ever admitted to the curated universe. The mechanical
+# screen is the ADMISSION test: new qualifiers are appended automatically each
+# quarter (added_by: screen). NOBODY is removed automatically — a member that
+# stops meeting the criteria is only flagged as "lapsed" for review.
+#
+# To REMOVE a member (the only manual step), edit its entry:
+#     status: removed
+#     removed_quarter: 2026-Q2
+#     reason: drifted into an index-like book, no longer a concentrated manager
+# A removed member is never auto-re-added, even if it qualifies again.
+#
+# Fields: cik (SEC id), name, joined (first qualifying quarter),
+#         added_by (screen | grandfathered | manual), status (active | removed).
+# Git tracks every change, so membership decisions are permanently auditable.
+
+members:
+- cik: 1805589
+  name: 59 North Capital Management, LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1317588
+  name: ABRAMS BISON INVESTMENTS, LLC
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1358706
+  name: ABRAMS CAPITAL MANAGEMENT, L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1112520
+  name: AKRE CAPITAL MANAGEMENT LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1631014
+  name: ALTAROCK PARTNERS LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1924953
+  name: ATLAS Infrastructure Partners (UK) Ltd.
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1731012
+  name: Alphinity Investment Management Pty Ltd
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1541617
+  name: Altimeter Capital Management, LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1753384
+  name: Analog Century Management LP
+  joined: 2025-Q4
+  added_by: screen
+  status: active
+- cik: 1948899
+  name: Avala Global LP
+  joined: 2025-Q3
+  added_by: screen
+  status: active
+- cik: 2087378
+  name: Avantyr Capital Partners, LP
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1040508
+  name: BAIN CAPITAL INVESTORS LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1510974
+  name: BDT CAPITAL PARTNERS, LLC
+  joined: 2025-Q4
+  added_by: screen
+  status: active
+- cik: 1067983
+  name: Berkshire Hathaway Inc
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1670104
+  name: BLS CAPITAL FONDSMAEGLERSELSKAB A/S
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1360798
+  name: BRIGHTON JONES LLC
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1911876
+  name: BSN CAPITAL PARTNERS Ltd
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1801547
+  name: Blue Whale Capital LLP
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1691982
+  name: Bowie Capital Management, LLC
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1352924
+  name: Caledonia (Private) Investments Pty Ltd
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1527166
+  name: Carlyle Group L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1560123
+  name: Catterton Management Company, L.L.C.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1525907
+  name: Cerberus Capital Management, L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1365341
+  name: Cevian Capital II GP LTD
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1510677
+  name: Consulta Ltd
+  joined: 2025-Q4
+  added_by: screen
+  status: active
+- cik: 1510669
+  name: Contour Asset Management LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1535472
+  name: Corvex Management LP
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1789082
+  name: Crake Asset Management LLP
+  joined: 2025-Q3
+  added_by: screen
+  status: active
+- cik: 1854440
+  name: DARLINGTON PARTNERS CAPITAL MANAGEMENT, LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1609098
+  name: Darsana Capital Partners LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1839209
+  name: Darwin Global Management, Ltd.
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1547007
+  name: Dorsal Capital Management, LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1602189
+  name: Dragoneer Investment Group, LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1707921
+  name: ECP ControlCo, LLC
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1587114
+  name: EcoR1 Capital, LLC
+  joined: 2025-Q3
+  added_by: screen
+  status: active
+- cik: 1581811
+  name: Egerton Capital (UK) LLP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1791786
+  name: Elliott Investment Management L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1868537
+  name: FUNDSMITH INVESTMENT SERVICES LTD.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1701717
+  name: First Beijing Investment Ltd
+  joined: 2025-Q3
+  added_by: screen
+  status: active
+- cik: 1426398
+  name: Focused Investors LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1590531
+  name: Foxhaven Asset Management, LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1796107
+  name: Freemont Capital Pte Ltd
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1166559
+  name: Bill & Melinda Gates Foundation Trust
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1017645
+  name: GENERAL ATLANTIC LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1375534
+  name: GENERATION INVESTMENT MANAGEMENT LLP
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 846222
+  name: GREENHAVEN ASSOCIATES INC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1840735
+  name: Greenoaks Capital Partners LLC
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1576350
+  name: GTCR LLC
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1848138
+  name: Greenwoods Asset Management Hong Kong Ltd.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1759760
+  name: H&H International Investment, LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1277403
+  name: Hamlin Capital Management, LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1839497
+  name: Helikon Investments Ltd
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1837343
+  name: Hill City Capital, LP
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1709323
+  name: Himalaya Capital Management LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1619844
+  name: Hyperion Asset Management Ltd
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1483866
+  name: Independent Franchise Partners LLP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1755035
+  name: Index Venture Associates VI Ltd
+  joined: 2025-Q3
+  added_by: screen
+  status: active
+- cik: 1525234
+  name: Jericho Capital Asset Management L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1113000
+  name: KENSICO CAPITAL MANAGEMENT CORP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1817646
+  name: L1 Capital Pty Ltd
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1175523
+  name: Leonard Green & Partners, L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1484150
+  name: Lindsell Train Ltd
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1985479
+  name: Linonia Partnership LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1426092
+  name: Longview Partners (Guernsey) LTD
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 914976
+  name: MARSHFIELD ASSOCIATES
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1732811
+  name: MFN Partners Management, LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1801265
+  name: Madison Avenue Partners, LP
+  joined: 2025-Q4
+  added_by: screen
+  status: active
+- cik: 2006397
+  name: MASTERCARD FOUNDATION ASSET MANAGEMENT CORP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1427119
+  name: Meritage Group LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1765388
+  name: Metropolis Capital Ltd
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1908450
+  name: Newlands Management Operations LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1035674
+  name: PAULSON & CO. INC.
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1050464
+  name: PECONIC PARTNERS LLC
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1568788
+  name: Palestra Capital Management LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1336528
+  name: Pershing Square Capital Management, L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1803274
+  name: Platinum Equity Advisors, LLC/DE
+  joined: 2025-Q4
+  added_by: screen
+  status: active
+- cik: 1784260
+  name: Rothschild & Co Wealth Management UK Ltd
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1512171
+  name: Route One Investment Company, L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1731509
+  name: SB INVESTMENT ADVISERS (UK) LTD
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1607841
+  name: SC US (TTGP), LTD.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1537530
+  name: SCGE MANAGEMENT, L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1543170
+  name: SPRUCE HOUSE INVESTMENT MANAGEMENT LLC
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1503174
+  name: SRS Investment Management, LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1582090
+  name: Sachem Head Capital Management LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1418226
+  name: Silver Lake Group, L.L.C.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 2045724
+  name: Situational Awareness LP
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 2038540
+  name: Situational Awareness Partners LP
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1517857
+  name: Soroban Capital Partners LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1517137
+  name: Starboard Value LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1505183
+  name: Stockbridge Partners LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1960830
+  name: SurgoCap Partners LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1647251
+  name: TCI FUND MANAGEMENT LTD
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1450701
+  name: Thoma Bravo, LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1034541
+  name: TIMUCUAN ASSET MANAGEMENT INC/FL
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1743937
+  name: TOMS Capital Investment Management LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1345471
+  name: TRIAN FUND MANAGEMENT, L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1697868
+  name: Valley Forge Capital Management, LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1418814
+  name: ValueAct Holdings, L.P.
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1541448
+  name: Veritas Asset Management LLP
+  joined: 2025-Q3
+  added_by: screen
+  status: active
+- cik: 1849753
+  name: Voyager Global Management LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1026720
+  name: WELLCOME TRUST LTD (THE) as trustee of the WELLCOME TRUST
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1599383
+  name: WINDACRE PARTNERSHIP LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1356513
+  name: Westwood Global Investments, LLC
+  joined: 2025-Q3
+  added_by: screen
+  status: active
+- cik: 1756558
+  name: XN LP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1349434
+  name: LOCUST WOOD CAPITAL ADVISERS, LLC
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 315054
+  name: REGENTS OF THE UNIVERSITY OF CALIFORNIA
+  joined: 2025-Q4
+  added_by: screen
+  status: active
+- cik: 1034196
+  name: ADVENT INTERNATIONAL CORP/MA
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 2126503
+  name: Anther Capital Ltd
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1633313
+  name: Avoro Capital Advisors LLC
+  joined: 2025-Q2
+  added_by: screen
+  status: active
+- cik: 1032814
+  name: CHECK CAPITAL MANAGEMENT INC/CA
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1799802
+  name: Comprehensive Financial Management LLC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1626220
+  name: Greenhouse Funds LLLP
+  joined: 2026-Q1
+  added_by: screen
+  status: active
+- cik: 1732768
+  name: Lingotto Investment Management LLP
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1051359
+  name: PAR CAPITAL MANAGEMENT INC
+  joined: 2025-Q1
+  added_by: screen
+  status: active
+- cik: 1601407
+  name: Troy Asset Management Ltd
+  joined: 2025-Q3
+  added_by: screen
+  status: active
+- cik: 2029917
+  name: ADAPT Investment Managers SA
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1817534
+  name: Anomaly Capital Management, LP
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1449434
+  name: Apollo Management Holdings, L.P.
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1528593
+  name: Black Creek Investment Management Inc.
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1600285
+  name: BlueSpruce Investments, LP
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1423686
+  name: CADIAN CAPITAL MANAGEMENT, LP
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1945894
+  name: Davis Asset Management, L.P.
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1732008
+  name: GUARDCAP ASSET MANAGEMENT Ltd
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1312908
+  name: Gates Capital Management, Inc.
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1011443
+  name: HBK INVESTMENTS L P
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1762304
+  name: HHLR ADVISORS, LTD.
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1786767
+  name: Impactive Capital LP
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1061165
+  name: LONE PINE CAPITAL LLC
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1855655
+  name: Paradigm Biocapital Advisors LP
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1323953
+  name: RGM Capital, LLC
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1595849
+  name: Sessa Capital IM, L.P.
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1903793
+  name: TPG GP A, LLC
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1531879
+  name: Teilinger Capital Ltd.
+  joined: 2025-Q1
+  added_by: grandfathered
+  status: active
+- cik: 1768111
+  name: Bain Capital Public Equity Management II, LLC
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 1697591
+  name: CAS Investment Partners, LLC
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 1827734
+  name: FERNBRIDGE CAPITAL MANAGEMENT LP
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 1698060
+  name: Gobi Capital LLC
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 1637946
+  name: General Catalyst Group Management, LLC
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 1649614
+  name: IDG China Capital Fund III Associates L.P.
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 1512397
+  name: Knighthead Capital Management, LLC
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 1680964
+  name: SOMA EQUITY PARTNERS LP
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 2003074
+  name: SYLEBRA CAPITAL LLC
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 1539436
+  name: Standard Investments LLC
+  joined: 2025-Q2
+  added_by: grandfathered
+  status: active
+- cik: 1259313
+  name: ARES MANAGEMENT LLC
+  joined: 2025-Q3
+  added_by: grandfathered
+  status: active
+- cik: 872162
+  name: BLACKHILL CAPITAL INC
+  joined: 2025-Q3
+  added_by: grandfathered
+  status: active
+- cik: 915191
+  name: FAIRFAX FINANCIAL HOLDINGS LTD/ CAN
+  joined: 2025-Q3
+  added_by: grandfathered
+  status: active
+- cik: 1082621
+  name: HARVARD MANAGEMENT CO INC
+  joined: 2025-Q3
+  added_by: grandfathered
+  status: active
+- cik: 1796409
+  name: Heard Capital LLC
+  joined: 2025-Q3
+  added_by: grandfathered
+  status: active
+- cik: 1676292
+  name: Hill Path Capital LP
+  joined: 2025-Q3
+  added_by: grandfathered
+  status: active
+- cik: 1964563
+  name: MADRONE ADVISORS, LLC
+  joined: 2025-Q3
+  added_by: grandfathered
+  status: active
+- cik: 1836733
+  name: Ribbit Management Company, LLC
+  joined: 2025-Q3
+  added_by: grandfathered
+  status: active
+- cik: 1332784
+  name: Silver Point Capital L.P.
+  joined: 2025-Q4
+  added_by: grandfathered
+  status: active
+- cik: 1555623
+  name: Trivest Advisors Ltd
+  joined: 2025-Q4
+  added_by: grandfathered
+  status: active
+- cik: 1693838
+  name: Ursa Fund Management, LLC
+  joined: 2025-Q4
+  added_by: grandfathered
+  status: active
+- cik: 1615982
+  name: VR ADVISER, LLC
+  joined: 2025-Q4
+  added_by: grandfathered
+  status: active
