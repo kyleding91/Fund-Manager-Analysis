@@ -152,3 +152,31 @@ This keeps everything in one language and avoids servers, accounts, or hosting.
   source — or are CUSIPs fine to start?
 - Should the screen thresholds ($2B, 30 holdings) be **adjustable** in the app so
   you can experiment?
+
+---
+
+## Development backlog (on hold — picked up when prioritized)
+
+*Parked 2026-06-10 after the post-launch product review. Current focus: site
+features & UI/UX (P1 "Quarterly Moves" page first).*
+
+### P0 — Trustworthy autopilot (ops hardening)
+- [ ] CI gates in `.github/workflows/update-site.yml`: run the unit-test suite
+      and `python3 evaluate_screen.py --strict` **before** deploy; skip
+      publishing and open a GitHub issue on failure (today a bad quarter would
+      deploy silently — the audit exists but isn't wired into the pipeline).
+- [ ] Bump the PWA service-worker cache version automatically each build (key
+      it to the quarter label) so returning phone users see fresh data.
+- [ ] Manual dry-run of the full workflow from the Actions tab before the
+      August 2026 deadline (13F due ~Aug 14; automation wakes Aug 16/23/28).
+
+### P2 — Connective tissue (site polish)
+- [ ] Badge lapsed roster members in the Managers directory (their own pages
+      already mark sub-criteria quarters with ○; the directory doesn't yet).
+- [ ] Link each holding on manager deep-dive pages to its per-stock page
+      (stock pages already link back to managers).
+- [ ] "Δ holders vs last quarter" column on the Most-held stocks table.
+- [ ] Site-wide search across managers + stocks.
+- [ ] Sitemap + per-page meta descriptions (sharing/SEO).
+- [ ] Stretch: CUSIP→ticker mapping (needs an external data source — decide
+      scope/cost first).

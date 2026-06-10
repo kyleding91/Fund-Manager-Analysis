@@ -7,8 +7,11 @@ keeps only **value-oriented, concentrated managers**
 and quarter-over-quarter changes in your browser.
 
 It also **tags each filer's type** (genuine manager, market-maker, mutual-fund
-complex, holding company…) and keeps an **audit trail** of why every filer is or
-isn't shown — so the curated universe stays honest and reviewable.
+complex, holding company…), keeps a **sticky membership roster** (qualify once,
+stay until a human removes you), and records **why every filer is or isn't
+shown** — so the curated universe stays honest and reviewable.
+
+**→ The complete selection methodology is documented in [SCREENING.md](SCREENING.md).**
 
 Everything is Python and runs on your own Mac — no accounts, servers, or fees.
 
@@ -201,6 +204,7 @@ Fund Manager Analysis/
 │   │                   #   screen.yaml     — numeric criteria
 │   │                   #   curation.yaml   — force exclude / include by CIK
 │   │                   #   firm_types.yaml — per-CIK type overrides + excluded types
+│   │                   #   roster.yaml     — sticky member registry (auto-joins; human removals)
 │   │                   #   benchmark.yaml  — must-pass / must-exclude regression lists
 ├── evaluate_screen.py  # read-only audit: writes data/audit/ report + checks the benchmark
 ├── data/

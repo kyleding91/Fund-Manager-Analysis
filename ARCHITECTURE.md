@@ -21,6 +21,11 @@ whole thing is Python and runs on your Mac; the website is free to host.
 
 ## 2. The screen (selection criteria)
 
+> **Canonical methodology reference: [SCREENING.md](SCREENING.md)** — the full
+> decision pipeline (mechanical screen → firm type → sticky roster → curation)
+> with worked examples and the quarterly lifecycle. This section covers the
+> same ground from the implementation side.
+
 A manager's filing **passes the screen** for a quarter when:
 
 > **AUM > $2 billion** **AND** **≥ min_holdings (3) issuers** **AND**
@@ -64,6 +69,16 @@ per-CIK overrides correct both directions: tagging mis-read operating companies
 (Toyota, Exor, Investor AB) *and* protecting real managers the heuristic mislabels
 as operating companies (SC US = Sequoia China, Consulta).
 
+**Membership roster (the STICKY universe):** the screen is an *admission* test,
+not a per-quarter filter. **`config/roster.yaml`** lists every member: new
+qualifiers join automatically each rebuild (`added_by: screen`); **nobody is
+removed automatically**. A member that later fails the screen is flagged as
+*lapsed* (on the This-quarter page and in the audit report) but stays shown
+until a human edits its entry to `status: removed` with a reason — git history
+is the audit trail of every membership decision. A removed member is never
+auto-re-added. If the roster file is absent (fresh checkout, offline tests),
+everything falls back to the per-quarter mechanical screen.
+
 **Curation (editorial show/hide):** the screen is purely mechanical. To hand-tune
 the published universe, edit **`config/curation.yaml`**:
 - `exclude:` — hide managers that pass but you don't want shown (index funds,
@@ -74,10 +89,13 @@ the published universe, edit **`config/curation.yaml`**:
   passing managers' data. **Force-include wins** over both exclusion paths.
 
 `config/firm_types.yaml` (facts) is kept separate from `config/curation.yaml`
-(editorial). Both, plus `passes_screen`, combine in **exactly one SQL predicate**
-— `src/curation.py` `screen_predicate(alias)`:
+(editorial). Both, plus roster membership, combine in **exactly one SQL
+predicate** — `src/curation.py` `screen_predicate(alias)`:
 
-> `cik in include  OR  ( passes_screen = 1  AND  cik not in exclude  AND  filer_type not in <excluded types> )`
+> `cik in include  OR  ( cik in <active roster members>  AND  cik not in exclude  AND  filer_type not in <excluded types> )`
+
+(without a roster file, `cik in <active roster members>` falls back to
+`passes_screen = 1` — the original per-quarter rule).
 
 Because `filings.filer_type` is a stored column, the ~8 existing query call sites
 (`queries.py`, `insights.py`, `site_data.py`) inherit the firm-type rule with zero

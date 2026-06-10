@@ -3,6 +3,8 @@
 This is the 13F Fund Tracker ("Value Flow") — a Python + SQLite + Streamlit /
 static-site project tracking concentrated value managers from SEC EDGAR 13F
 filings. Design details: ARCHITECTURE.md. Plain-English manual: USER_GUIDE.md.
+**Selection methodology (canonical): SCREENING.md** — read it before touching
+any screen/roster/curation logic, and keep it updated when that logic changes.
 
 ## Working rules
 
@@ -12,6 +14,10 @@ filings. Design details: ARCHITECTURE.md. Plain-English manual: USER_GUIDE.md.
   (screen.yaml, firm_types.yaml, curation.yaml, benchmark.yaml), then re-run
   `python3 rebuild_universe.py`. Never weaken `config/benchmark.yaml` to make
   a check pass.
+- The universe is a **sticky roster** (`config/roster.yaml`): qualifiers join
+  automatically; **never remove a member yourself** — lapsed members are kept
+  and flagged for the user's review; only the user marks `status: removed`
+  (with a reason). Never auto-re-add a removed member.
 - `data/13f.db` is tracked in git on purpose; `data/raw/` (~12GB cache) is not.
 - After data or config changes, the verification path is:
   `python3 -m unittest discover -s tests` → `python3 evaluate_screen.py` →

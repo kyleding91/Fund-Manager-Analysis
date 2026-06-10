@@ -5,6 +5,8 @@ background assumed. If you only read one file, read this one.
 
 > For the deeper "how it's built" details, see `ARCHITECTURE.md`.
 > For the quick install/run steps, see `README.md`.
+> For the complete manager-selection methodology (all layers, with examples),
+> see **`SCREENING.md`**.
 
 ---
 
@@ -159,6 +161,28 @@ include:
 site or on SEC EDGAR — the number in the address bar is the CIK. Leading zeros
 don't matter (`1067983` and `0001067983` are the same).
 
+### C1½) The membership roster — your quarterly review ritual
+
+The universe is **sticky**: a manager that qualifies once stays on the list,
+even if a later quarter's screen would drop it (a great manager having a soft
+quarter shouldn't vanish). **`config/roster.yaml`** is the member registry —
+new qualifiers are added automatically; **only you remove anyone**.
+
+Each quarter, after the new data loads:
+
+1. Open the **This quarter** page (or `data/audit/screen_audit.md`) and look at
+   **"Lapsed — kept pending review"**: members that no longer meet the criteria,
+   with the reason (dipped below $2B, drifted past 30 names, …).
+2. **Keep** a lapsed member → do nothing. It stays.
+3. **Remove** one → edit its entry in `config/roster.yaml`:
+   ```yaml
+   status: removed
+   removed_quarter: 2026-Q2
+   reason: drifted into an index-like book, no longer concentrated
+   ```
+   Then rebuild the site. A removed member never comes back automatically —
+   even if it re-qualifies — so removals are real decisions, tracked in git.
+
 ### C2) Fix a filer's *type* (or exclude a whole category)
 
 The project guesses each filer's type from its name. When the guess is wrong — a
@@ -282,6 +306,8 @@ suite) tells you immediately.
 | Hide a manager | add CIK to `exclude` in `config/curation.yaml` → `python3 build_site.py` |
 | Force-add a manager | add CIK to `include` in `config/curation.yaml` → `python3 rebuild_universe.py` → `python3 build_site.py` |
 | Fix a filer's type | edit `config/firm_types.yaml` → `python3 rebuild_universe.py` → `python3 build_site.py` |
+| Review lapsed members | open the **This quarter** page (or the audit report) → keep = do nothing |
+| Remove a member | edit its entry in `config/roster.yaml` (`status: removed` + reason) → `python3 build_site.py` |
 | See why X is/isn't shown | `python3 evaluate_screen.py` → open `data/audit/screen_audit.md` |
 | Publish changes | `git add -A` → `git commit -m "..."` → `git push` |
 | Preview the site locally | `python3 -m http.server 8620 --directory site` then open http://localhost:8620 |
@@ -295,6 +321,7 @@ suite) tells you immediately.
 config/screen.yaml      ← the screening RULES (you edit this)
 config/curation.yaml    ← your exclude/include OVERRIDES (you edit this)
 config/firm_types.yaml  ← per-CIK type corrections + excluded types (you edit this)
+config/roster.yaml      ← the sticky member registry (auto-adds; you remove, with reasons)
 config/benchmark.yaml   ← must-pass / must-exclude safety-net lists (you edit this)
 data/13f.db             ← the database (kept in git so the robot can update it)
 data/audit/             ← the "why is X shown?" report (made by evaluate_screen.py)
