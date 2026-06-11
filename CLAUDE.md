@@ -9,7 +9,10 @@ any screen/roster/curation logic, and keep it updated when that logic changes.
 ## Working rules
 
 - **Never commit or push unless explicitly asked.** The user reviews first.
-  Pushing to main triggers the public site deploy.
+  Note: pushing alone does NOT redeploy the public site — publishing happens
+  via the "Update 13F site" workflow (scheduled quarterly, or run manually
+  from the GitHub Actions tab). Treat triggering that workflow as a production
+  deploy: only on the user's explicit request.
 - Screen criteria and curation are **config-as-data**: edit `config/*.yaml`
   (screen.yaml, firm_types.yaml, curation.yaml, benchmark.yaml), then re-run
   `python3 rebuild_universe.py`. Never weaken `config/benchmark.yaml` to make
