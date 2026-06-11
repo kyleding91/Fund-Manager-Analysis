@@ -3,7 +3,7 @@
 :root {
   --ink: #14253A;
   --ink-soft: #3A4D63;
-  --muted: #6B7889;
+  --muted: #5D6B7E;
   --emerald: #0E7C66;
   --emerald-dark: #0a5c4c;
   --emerald-tint: #E5F0EC;
@@ -13,7 +13,7 @@
   --line-soft: #F0EDE6;
   --amber: #B7791F;
   --red: #B23A48;
-  --green: #2F8F5B;
+  --green: #28804F;
   --radius: 12px;
   --shadow: 0 1px 2px rgba(20,37,58,.04), 0 6px 20px rgba(20,37,58,.06);
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
@@ -32,6 +32,9 @@ body {
   line-height: 1.55;
 }
 a { color: var(--emerald); text-decoration: none; }
+.skip-link { position: absolute; left: -9999px; top: 0; z-index: 100;
+  background: var(--emerald); color: #fff; padding: 8px 14px; border-radius: 0 0 8px 0; }
+.skip-link:focus { left: 0; }
 a:hover { text-decoration: underline; }
 .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 .muted { color: var(--muted); }
@@ -94,7 +97,7 @@ h2:first-child { margin-top: 0; }
 .barrow .fill.navy { background: var(--ink); }
 
 /* ---- histogram (vertical bars) ---- */
-.histogram { display: flex; align-items: flex-end; gap: 10px; height: 150px; padding-top: 8px; }
+.histogram { display: flex; align-items: flex-end; gap: 10px; height: 150px; padding-top: 8px; border-bottom: 1px solid var(--line); }
 .histobar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; }
 .histobar .col { width: 100%; max-width: 46px; background: var(--emerald); border-radius: 5px 5px 0 0; min-height: 2px; }
 .histobar .col.navy { background: var(--ink); }
@@ -116,6 +119,7 @@ table.data tbody td { padding: 11px 14px; border-bottom: 1px solid var(--line-so
 table.data tbody tr:hover { background: #FAFBF9; }
 table.data tbody tr:last-child td { border-bottom: none; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data td.num, table.data .chg, td.nowrap { white-space: nowrap; }
 
 /* ---- badges / pills ---- */
 .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600;
@@ -126,7 +130,7 @@ table.data tbody tr:last-child td { border-bottom: none; }
 .chg { font-weight: 600; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; }
 .chg-new { background: #E6F4EC; color: #1E7A45; }
 .chg-added { background: #E8F1FB; color: #1F5FA8; }
-.chg-trimmed { background: #FBF1E3; color: #9A6510; }
+.chg-trimmed { background: #FBF1E3; color: #8A5A0E; }
 .chg-exited { background: #FBE9EB; color: #9E2B38; }
 .delta-pos { color: var(--green); }
 .delta-neg { color: var(--red); }
@@ -185,16 +189,36 @@ h3.qsub { font-family: var(--serif); font-size: 20px; margin: 30px 0 6px; letter
 .footer .footer-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
 .footer strong { color: #fff; }
 .footer .disclaimer { font-size: 12.5px; line-height: 1.6; }
+.footer .muted { color: #C9D2DC; }  /* 10.1:1 on navy; page-muted gray fails AA here */
 
 /* ---- responsive ---- */
 @media (max-width: 880px) {
   .kpis { grid-template-columns: 1fr 1fr; }
   .grid-2, .grid-3, .footer .footer-inner { grid-template-columns: 1fr; }
   .barrow { grid-template-columns: 130px 1fr auto; }
-  .masthead-inner { height: auto; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 0; }
+  .masthead-inner { height: auto; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 24px; }
   .nav { gap: 16px; }
 }
+@media (max-width: 880px) {
+  /* Scrolling-edge shadows: a soft cue that a table continues off-screen.
+     The cover gradients scroll WITH the content (attachment: local) so the
+     shadow fades out when fully scrolled to that edge. */
+  .table-wrap {
+    background-color: var(--card);
+    background-image:
+      linear-gradient(90deg, var(--card) 30%, rgba(255,255,255,0)),
+      linear-gradient(270deg, var(--card) 30%, rgba(255,255,255,0)),
+      radial-gradient(farthest-side at 0 50%, rgba(20,37,58,.22), transparent),
+      radial-gradient(farthest-side at 100% 50%, rgba(20,37,58,.22), transparent);
+    background-position: left center, right center, left center, right center;
+    background-repeat: no-repeat;
+    background-size: 40px 100%, 40px 100%, 16px 100%, 16px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+}
+
 @media (max-width: 520px) {
+  table.data thead th, table.data tbody td { padding: 8px 10px; }
   .kpis { grid-template-columns: 1fr 1fr; }
   .barrow { grid-template-columns: 96px 1fr auto; font-size: 13px; }
   .histogram { gap: 5px; }

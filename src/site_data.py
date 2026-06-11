@@ -14,6 +14,22 @@ from . import classify, config, curation, insights, queries, roster
 
 
 # --- formatting ----------------------------------------------------------
+def usd_headline(x: float | None) -> str:
+    """Coarse format for headline KPIs: $983B, $1.05T — 3 significant figures.
+
+    Editorial-numbers convention: a hero number shouldn't carry cents-level
+    precision its own subtitle rounds away; detail lives in the tables.
+    """
+    if x is None:
+        return "-"
+    ax = abs(x)
+    if ax >= 1e12:
+        return f"${x / 1e12:,.2f}T"
+    if ax >= 1e10:
+        return f"${x / 1e9:,.0f}B"
+    return usd(x)
+
+
 def usd(x: float | None) -> str:
     if x is None:
         return "-"
@@ -190,7 +206,7 @@ def universe(conn, quarter: str) -> dict:
 
     mh = insights.most_held(conn, quarter, limit=15)
     most_held = _bars([
-        {"issuer": row.issuer, "num_funds": int(row.num_funds),
+        {"issuer": row.issuer, "cusip": row.cusip, "num_funds": int(row.num_funds),
          "total_value": usd(float(row.total_value)),
          "avg_pct": pct(float(row.avg_pct))}
         for row in mh.itertuples(index=False)
@@ -215,7 +231,8 @@ def universe(conn, quarter: str) -> dict:
     # (roster joins), so the two lists can never disagree.
     chg = insights.screen_changes(conn, quarter) or {"entered": []}
     new_mgrs = [
-        {"manager_name": r["manager_name"], "aum": usd(float(r["total_aum_usd"] or 0)),
+        {"manager_name": r["manager_name"], "cik": str(r["cik"]),
+         "aum": usd(float(r["total_aum_usd"] or 0)),
          "num_issuers": int(r["num_issuers"] or 0)}
         for r in chg["entered"]
     ][:12]
@@ -228,8 +245,8 @@ def universe(conn, quarter: str) -> dict:
         "prev_quarter": insights.previous_quarter(conn, quarter),
         "num_filers": len(rows),
         "num_managers": len(managers),
-        "total_aum": usd(total_aum),
-        "manager_aum": usd(mgr_aum),
+        "total_aum": usd_headline(total_aum),
+        "manager_aum": usd_headline(mgr_aum),
         "median_issuers": med_iss,
         "total_positions": sum(r["num_positions"] for r in rows),
         "type_mix": mix,
@@ -300,7 +317,7 @@ def stock_detail(conn, issuer_cusip: str, quarter: str, max_quarters: int = 5) -
     prev_name = {str(r.cik): r.manager_name for r in prev.itertuples(index=False)} if prev is not None else {}
 
     issuer = cur.iloc[0].issuer if not cur.empty else prev.iloc[0].issuer
-    emoji = {"new": "🟢", "added": "🔼", "trimmed": "🔽", "exited": "🔴"}
+    emoji = _CHANGE_GLYPHS
 
     holders, new_buyers = [], []
     counts = {"new": 0, "added": 0, "trimmed": 0, "exited": 0}
@@ -416,6 +433,13 @@ def _share_change(now: float, prev: float) -> str:
     return txt
 
 
+# Change-indicator glyphs (B5): plain text, not emoji — emoji render
+# inconsistently across platforms, read badly in screen readers, and encode
+# meaning in hue alone. Color comes from the .chg-* pill styles; these glyphs
+# add a shape signal and the templates pair them with the word itself.
+_CHANGE_GLYPHS = {"new": "+", "added": "\u25b2", "trimmed": "\u25bc", "exited": "\u00d7"}
+
+
 # Plain-English versions of the mechanical reject reasons, for the lapsed list.
 _LAPSE_REASONS = {
     "aum_below_floor": "dipped below $2B",
@@ -488,7 +512,7 @@ def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10)
     money_out = [_stock_row(s) for s in reversed(stocks_agg)
                  if s["net_flow_usd"] < 0][:top_stocks]
 
-    emoji = {"new": "🟢", "added": "🔼", "trimmed": "🔽", "exited": "🔴"}
+    emoji = _CHANGE_GLYPHS
 
     def _pair_row(m):
         return {
@@ -595,7 +619,7 @@ def _moves_for(conn, cik: str, quarter: str) -> dict | None:
         return None
     nonzero = qoq[qoq["change_type"] != "unchanged"]
     counts = qoq["change_type"].value_counts().to_dict()
-    emoji = {"new": "🟢", "added": "🔼", "trimmed": "🔽", "exited": "🔴"}
+    emoji = _CHANGE_GLYPHS
     return {
         "counts": [{"kind": k, "emoji": emoji[k], "n": int(counts.get(k, 0))}
                    for k in ("new", "added", "trimmed", "exited")],

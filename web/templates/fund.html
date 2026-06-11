@@ -60,17 +60,17 @@
       &nbsp;·&nbsp;<a href="{{ q.sec_url }}" target="_blank" rel="noopener">View original {{ q.form_type }} filing on SEC EDGAR&nbsp;↗</a>{% endif %}</p>
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th class="no-sort">Company</th><th class="no-sort">Class</th><th class="no-sort num">Value</th><th class="no-sort num">Shares</th><th class="no-sort">% of portfolio</th></tr></thead>
+        <thead><tr><th class="no-sort">Company</th><th class="no-sort">% of portfolio</th><th class="no-sort num">Value</th><th class="no-sort num">Shares</th><th class="no-sort">Class</th></tr></thead>
         <tbody>
           {% for h in q.holdings %}
           <tr>
             <td>{% if h.linked %}<a href="{{ root }}stocks/{{ h.cusip6 }}.html">{{ h.issuer }}</a>{% else %}{{ h.issuer }}{% endif %}{% if h.put_call %} <span class="badge gray">{{ h.put_call }}</span>{% endif %}</td>
-            <td class="muted">{{ h.title }}</td>
-            <td class="num">{{ h.value }}</td>
-            <td class="num">{{ h.shares }}</td>
             <td>
               <div class="pctcell"><span class="track"><span class="fill" style="width: {{ h.width }}%"></span></span><span class="lab">{{ h.pct }}</span></div>
             </td>
+            <td class="num">{{ h.value }}</td>
+            <td class="num">{{ h.shares }}</td>
+            <td class="muted">{{ h.title }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -80,9 +80,9 @@
     <h3 class="qsub">Quarter-over-quarter moves &mdash; {{ q.quarter }}</h3>
     {% if q.moves %}
     <p class="section-sub">Changes in share count versus {{ q.prev_quarter or 'the prior filing' }} — what the manager actually bought or sold.</p>
-    <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+    <div class="kpis" style="margin-bottom:18px;">
       {% for c in q.moves.counts %}
-      <div class="kpi"><div class="label">{{ c.emoji }} {{ c.kind|capitalize }}</div><div class="value">{{ c.n }}</div></div>
+      <div class="kpi"><div class="label"><span aria-hidden="true">{{ c.emoji }}</span> {{ c.kind|capitalize }}</div><div class="value">{{ c.n }}</div></div>
       {% endfor %}
     </div>
     {% if q.moves.rows %}
@@ -93,7 +93,7 @@
           {% for m in q.moves.rows %}
           <tr>
             <td>{{ m.issuer }}</td>
-            <td><span class="chg chg-{{ m.change_type }}">{{ m.emoji }} {{ m.change_type|capitalize }}</span></td>
+            <td><span class="chg chg-{{ m.change_type }}"><span aria-hidden="true">{{ m.emoji }}</span> {{ m.change_type|capitalize }}</span></td>
             <td class="num">{{ m.now }}</td>
             <td class="num">{{ m.was }}</td>
             <td class="num {{ 'delta-pos' if m.delta_val > 0 else 'delta-neg' if m.delta_val < 0 }}">{{ m.delta }}</td>

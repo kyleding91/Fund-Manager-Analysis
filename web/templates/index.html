@@ -106,7 +106,7 @@
     <div class="barlist">
       {% for s in u.most_held[:12] %}
       <div class="barrow">
-        <span class="name">{{ s.issuer }}</span>
+        <span class="name"><a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a></span>
         <span class="track"><span class="fill" style="width: {{ s.width }}%"></span></span>
         <span class="val">{{ s.num_funds }}</span>
       </div>
@@ -124,7 +124,7 @@
       <thead><tr><th class="no-sort">Manager</th><th class="no-sort num">AUM</th><th class="no-sort num"># Holdings</th></tr></thead>
       <tbody>
         {% for m in u.new_managers %}
-        <tr><td>{{ m.manager_name }}</td><td class="num">{{ m.aum }}</td><td class="num">{{ m.num_issuers }}</td></tr>
+        <tr><td><a href="{{ root }}funds/{{ m.cik }}.html">{{ m.manager_name }}</a></td><td class="num">{{ m.aum }}</td><td class="num">{{ m.num_issuers }}</td></tr>
         {% endfor %}
       </tbody>
     </table>

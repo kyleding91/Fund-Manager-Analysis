@@ -9,7 +9,7 @@
   {% if s.num_holders %}
   <span class="badge">Held by {{ s.num_holders }} of {{ s.universe }} managers</span>
   {% else %}
-  <span class="badge gray">🔴 Fully exited{% if s.prev_quarter %} in {{ s.quarter }}{% endif %}</span>
+  <span class="badge gray">Fully exited{% if s.prev_quarter %} in {{ s.quarter }}{% endif %}</span>
   {% endif %}
 </div>
 {% if s.num_holders %}
@@ -59,15 +59,15 @@
 <section class="section">
   <h2>What changed{% if s.prev_quarter %} since {{ s.prev_quarter }}{% endif %}</h2>
   {% if s.prev_quarter %}
-  <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+  <div class="kpis" style="margin-bottom:18px;">
     {% for c in s.counts %}
-    <div class="kpi"><div class="label">{{ c.emoji }} {{ c.kind|capitalize }}</div><div class="value">{{ c.n }}</div></div>
+    <div class="kpi"><div class="label"><span aria-hidden="true">{{ c.emoji }}</span> {{ c.kind|capitalize }}</div><div class="value">{{ c.n }}</div></div>
     {% endfor %}
   </div>
   {% if s.new_buyers or s.exits %}
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
     <div class="card">
-      <h3 class="qsub" style="margin-top:0;">🟢 New buyers</h3>
+      <h3 class="qsub" style="margin-top:0;">New buyers</h3>
       {% if s.new_buyers %}
       <ul class="plain-list">
         {% for h in s.new_buyers %}
@@ -77,7 +77,7 @@
       {% else %}<p class="muted">No new buyers this quarter.</p>{% endif %}
     </div>
     <div class="card">
-      <h3 class="qsub" style="margin-top:0;">🔴 Exited</h3>
+      <h3 class="qsub" style="margin-top:0;">Exited</h3>
       {% if s.exits %}
       <ul class="plain-list">
         {% for e in s.exits %}
@@ -118,7 +118,7 @@
           <td class="num">{{ h.value }}</td>
           <td class="num">{{ h.pct }}</td>
           <td class="num">{{ h.shares }}</td>
-          <td>{% if h.change_type != 'unchanged' %}<span class="chg chg-{{ h.change_type }}">{{ h.emoji }} {{ h.change_type|capitalize }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if h.change_type != 'unchanged' %}<span class="chg chg-{{ h.change_type }}"><span aria-hidden="true">{{ h.emoji }}</span> {{ h.change_type|capitalize }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
           <td class="num {{ 'delta-pos' if h.delta_val > 0 else 'delta-neg' if h.delta_val < 0 }}">{{ h.delta }}</td>
         </tr>
         {% endfor %}

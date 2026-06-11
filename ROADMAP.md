@@ -181,3 +181,19 @@ features & UI/UX (P1 "Quarterly Moves" page first).*
 - [ ] Sitemap + per-page meta descriptions (sharing/SEO).
 - [ ] Stretch: CUSIP→ticker mapping (needs an external data source — decide
       scope/cost first).
+
+### Design backlog (from the 2026-06-10 design review; full report regenerable
+### by the design-reviewer agent — done: B1–B6, B8, B10, C1, C4, C7, C9, C11, C13)
+- [ ] B7: keyboard access for filter chips + table sorting (buttons, aria-sort)
+- [ ] B9: shrink/unstick the mobile masthead (~145px of every phone screen)
+- [ ] C2: "+" prefix on positive deltas; C3: full-width sparklines with start/end
+      value labels; C5: hide Type column in default Managers view; C6: empty
+      state for zero search results; C8: collapse the 40-row lapsed list behind
+      <details>; C10: drop emoji from Overview bar labels; C12: scope="col" +
+      hidden captions on data tables; C14: PWA safe-area inset for iOS status bar
+- [ ] D1: title-case the ALL-CAPS EDGAR names (display-only, exceptions list)
+- [ ] D2: ETFs headline the moves tables while the site calls them "parked cash"
+      — filter or badge them (editorial decision; route via SCREENING.md/config)
+- [ ] D3: dedicated layout for exit-state stock pages (one chart, promote exits)
+- [ ] D4: rebalance Overview first card row (type-mix card is mostly air)
+- [ ] D5: Tufte-style end-value annotations on all sparklines

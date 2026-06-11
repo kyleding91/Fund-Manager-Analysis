@@ -13,7 +13,7 @@
 </section>
 
 <div class="kpis" style="margin-bottom:26px;">
-  <div class="kpi"><div class="label">Members compared</div><div class="value">{{ m.universe.compared }}</div><div class="hint">of {{ m.universe.count }} members — those with filings in both quarters</div></div>
+  <div class="kpi"><div class="label">Members compared</div><div class="value">{{ m.universe.compared }}</div><div class="sub">of {{ m.universe.count }} members — those with filings in both quarters</div></div>
   <div class="kpi"><div class="label">Est. money in</div><div class="value delta-pos">{{ m.gross_in }}</div></div>
   <div class="kpi"><div class="label">Est. money out</div><div class="value delta-neg">{{ m.gross_out }}</div></div>
   <div class="kpi"><div class="label">Net</div><div class="value {{ 'delta-pos' if m.net_positive else 'delta-neg' }}">{{ '+' if m.net_positive else '−' }}{{ m.net }}</div></div>
@@ -73,7 +73,7 @@
           {% for p in m.biggest_buys %}
           <tr>
             <td><a href="{{ root }}funds/{{ p.cik }}.html">{{ p.manager_name }}</a></td>
-            <td><span class="chg chg-{{ p.change_type }}">{{ p.emoji }}</span> {% if p.linked %}<a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a>{% else %}{{ p.issuer }}{% endif %}</td>
+            <td><span class="chg chg-{{ p.change_type }}"><span aria-hidden="true">{{ p.emoji }}</span> {{ p.change_type|capitalize }}</span> {% if p.linked %}<a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a>{% else %}{{ p.issuer }}{% endif %}</td>
             <td class="num delta-pos">{{ p.share_change }}</td>
             <td class="num">{{ p.flow }}</td>
           </tr>
@@ -88,7 +88,7 @@
           {% for p in m.biggest_sells %}
           <tr>
             <td><a href="{{ root }}funds/{{ p.cik }}.html">{{ p.manager_name }}</a></td>
-            <td><span class="chg chg-{{ p.change_type }}">{{ p.emoji }}</span> {% if p.linked %}<a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a>{% else %}{{ p.issuer }}{% endif %}</td>
+            <td><span class="chg chg-{{ p.change_type }}"><span aria-hidden="true">{{ p.emoji }}</span> {{ p.change_type|capitalize }}</span> {% if p.linked %}<a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a>{% else %}{{ p.issuer }}{% endif %}</td>
             <td class="num delta-neg">{{ p.share_change }}</td>
             <td class="num">{{ p.flow }}</td>
           </tr>
@@ -106,7 +106,7 @@
   criteria but are <strong>kept by default</strong> pending review.</p>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;">
     <div class="card">
-      <h3 class="qsub" style="margin-top:0;">🟢 New members ({{ m.entered|length }})</h3>
+      <h3 class="qsub" style="margin-top:0;">New members ({{ m.entered|length }})</h3>
       {% if m.entered %}
       <ul class="plain-list">
         {% for e in m.entered %}
@@ -116,7 +116,7 @@
       {% else %}<p class="muted">None this quarter.</p>{% endif %}
     </div>
     <div class="card">
-      <h3 class="qsub" style="margin-top:0;">⏸ Lapsed — kept pending review ({{ m.lapsed|length }})</h3>
+      <h3 class="qsub" style="margin-top:0;">Lapsed — kept pending review ({{ m.lapsed|length }})</h3>
       {% if m.lapsed %}
       <ul class="plain-list">
         {% for e in m.lapsed %}
@@ -127,7 +127,7 @@
     </div>
     {% if m.left %}
     <div class="card">
-      <h3 class="qsub" style="margin-top:0;">⚪ Left ({{ m.left|length }})</h3>
+      <h3 class="qsub" style="margin-top:0;">Left ({{ m.left|length }})</h3>
       <ul class="plain-list">
         {% for e in m.left %}
         <li><a href="{{ root }}funds/{{ e.cik }}.html">{{ e.name }}</a> <span class="muted">was {{ e.aum }} · {{ e.num_issuers }} names</span></li>
