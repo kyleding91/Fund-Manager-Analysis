@@ -9,7 +9,10 @@ Design choices:
   * Only funds that PASS the screen are stored (keeps the DB focused & small).
   * Re-running a quarter is idempotent: filings are keyed by accession number.
   * Amendments (13F-HR/A) are stored as their own filing; the newest filing for a
-    (cik, period) is flagged is_current=1 so queries can ignore superseded ones.
+    (cik, period) is flagged is_current=1 so queries can ignore superseded ones —
+    EXCEPT partial "new holdings" amendments, which add a few positions without
+    restating the book and therefore never displace a full filing (see
+    _is_partial_amendment / pick_current_filing).
 """
 from __future__ import annotations
 
@@ -42,6 +45,7 @@ CREATE TABLE IF NOT EXISTS filings (
     passes_screen     INTEGER,
     is_current        INTEGER DEFAULT 1,
     filer_type        TEXT,
+    amendment_type    TEXT,
     loaded_at         TEXT,
     FOREIGN KEY (cik) REFERENCES funds(cik)
 );
@@ -122,6 +126,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE filings ADD COLUMN top_n_pct REAL")
     if "filer_type" not in filing_cols:
         conn.execute("ALTER TABLE filings ADD COLUMN filer_type TEXT")
+    if "amendment_type" not in filing_cols:
+        conn.execute("ALTER TABLE filings ADD COLUMN amendment_type TEXT")
 
     fund_cols = {r[1] for r in conn.execute("PRAGMA table_info(funds)")}
     if "filer_type" not in fund_cols:
@@ -134,20 +140,102 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE quarter_screen ADD COLUMN reject_reason TEXT")
 
 
+def _is_partial_amendment(form_type: str | None, amendment_type: str | None,
+                          num_positions: int | None, total_aum_usd: float | None,
+                          max_positions: int, max_aum: float) -> bool:
+    """True if a 13F-HR/A is a PARTIAL amendment that must not supersede.
+
+    Many 13F-HR/A filings only ADD a few positions ("new holdings" amendments)
+    rather than restating the whole book; making one of those current would
+    shrink the manager's quarter to a handful of lines. Partial means:
+      * the cover page says amendment type NEW HOLDINGS, or
+      * the type is empty/unknown AND the filing is far smaller than the
+        largest sibling filing for the same period (< 50% of its positions
+        AND < 50% of its total value).
+    RESTATEMENT (and full-size untyped) amendments are NOT partial.
+    """
+    if not (form_type or "").upper().endswith("/A"):
+        return False
+    atype = (amendment_type or "").strip().upper()
+    if "NEW HOLDINGS" in atype:
+        return True
+    if atype:
+        return False  # an explicit non-NEW-HOLDINGS type (e.g. RESTATEMENT)
+    return ((num_positions or 0) < 0.5 * max_positions
+            and (total_aum_usd or 0) < 0.5 * max_aum)
+
+
+def pick_current_filing(rows):
+    """Choose which of a (cik, period)'s filing rows should be is_current=1.
+
+    Latest date_filed wins (highest id breaks ties) among the NON-partial
+    filings; partial amendments (see _is_partial_amendment) never displace a
+    full filing. If every row is partial (e.g. only an amendment was ever
+    stored), fall back to latest-wins so the group still has a current row.
+
+    Pure, deterministic and idempotent. Rows need keys: id, form_type,
+    date_filed, amendment_type, num_positions, total_aum_usd (sqlite3.Row or
+    dict). Shared with repair_amendments.py.
+    """
+    rows = list(rows)
+    if not rows:
+        return None
+    max_pos = max((r["num_positions"] or 0) for r in rows)
+    max_aum = max((r["total_aum_usd"] or 0) for r in rows)
+    full = [r for r in rows
+            if not _is_partial_amendment(r["form_type"], r["amendment_type"],
+                                         r["num_positions"], r["total_aum_usd"],
+                                         max_pos, max_aum)]
+    pool = full or rows
+    return max(pool, key=lambda r: ((r["date_filed"] or ""), r["id"]))
+
+
 def _recompute_current(conn: sqlite3.Connection, cik: str, period: str) -> None:
-    """Flag the newest filing for (cik, period) as current; others superseded."""
-    conn.execute(
-        "UPDATE filings SET is_current = 0 WHERE cik = ? AND period_of_report = ?",
+    """Flag the winning filing for (cik, period) as current; others superseded.
+
+    The winner is the newest filing, except that a partial 13F-HR/A (a "new
+    holdings" add-on, or an untyped amendment under half the size of the
+    fullest sibling) never supersedes — see pick_current_filing.
+    """
+    rows = conn.execute(
+        """SELECT id, form_type, date_filed, amendment_type, num_positions,
+                  total_aum_usd
+           FROM filings WHERE cik = ? AND period_of_report = ?""",
         (cik, period),
-    )
+    ).fetchall()
+    winner = pick_current_filing(rows)
+    if winner is None:
+        return
     conn.execute(
-        """UPDATE filings SET is_current = 1
-           WHERE id = (
-               SELECT id FROM filings
-               WHERE cik = ? AND period_of_report = ?
-               ORDER BY date_filed DESC, id DESC LIMIT 1)""",
-        (cik, period),
+        "UPDATE filings SET is_current = (id = ?) "
+        "WHERE cik = ? AND period_of_report = ?",
+        (winner["id"], cik, period),
     )
+
+
+def is_partial_amendment_filing(conn: sqlite3.Connection, sf: ScreenedFund) -> bool:
+    """Would this screened filing be a PARTIAL amendment among its stored siblings?
+
+    Used by the pipeline to keep partial 13F-HR/A filings from overwriting the
+    quarter_screen ledger row (which is keyed by (cik, quarter), so a 2-position
+    "new holdings" add-on would otherwise replace the full book's metrics there).
+    Applies the same rule as pick_current_filing, sizing the filing against the
+    largest filing already stored for the same (cik, period) — and against
+    itself, so a lone amendment is never "partial".
+    """
+    if not (sf.form_type or "").upper().endswith("/A"):
+        return False
+    row = conn.execute(
+        """SELECT MAX(COALESCE(num_positions, 0)) AS max_pos,
+                  MAX(COALESCE(total_aum_usd, 0)) AS max_aum
+           FROM filings WHERE cik = ? AND period_of_report = ? AND accession != ?""",
+        (sf.cik, sf.period_of_report, sf.accession),
+    ).fetchone()
+    max_pos = max(row["max_pos"] or 0, sf.num_positions or 0)
+    max_aum = max(row["max_aum"] or 0, sf.total_aum_usd or 0)
+    return _is_partial_amendment(sf.form_type, sf.amendment_type,
+                                 sf.num_positions, sf.total_aum_usd,
+                                 max_pos, max_aum)
 
 
 def upsert_fund(conn: sqlite3.Connection, sf: ScreenedFund) -> int:
@@ -168,14 +256,14 @@ def upsert_fund(conn: sqlite3.Connection, sf: ScreenedFund) -> int:
     fields = (sf.cik, sf.accession, sf.form_type, sf.quarter_label,
               sf.period_of_report, sf.date_filed, sf.total_aum_usd,
               sf.num_positions, sf.num_issuers, sf.top_n_pct,
-              int(sf.passes_screen), sf.filer_type, now)
+              int(sf.passes_screen), sf.filer_type, sf.amendment_type, now)
     if row:
         filing_id = row["id"]
         conn.execute(
             """UPDATE filings SET cik=?, accession=?, form_type=?, quarter_label=?,
                period_of_report=?, date_filed=?, total_aum_usd=?, num_positions=?,
                num_issuers=?, top_n_pct=?, passes_screen=?, filer_type=?,
-               loaded_at=? WHERE id=?""",
+               amendment_type=?, loaded_at=? WHERE id=?""",
             (*fields, filing_id),
         )
         conn.execute("DELETE FROM holdings WHERE filing_id = ?", (filing_id,))
@@ -183,8 +271,9 @@ def upsert_fund(conn: sqlite3.Connection, sf: ScreenedFund) -> int:
         cur = conn.execute(
             """INSERT INTO filings(cik, accession, form_type, quarter_label,
                period_of_report, date_filed, total_aum_usd, num_positions,
-               num_issuers, top_n_pct, passes_screen, filer_type, loaded_at)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               num_issuers, top_n_pct, passes_screen, filer_type, amendment_type,
+               loaded_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             fields,
         )
         filing_id = cur.lastrowid

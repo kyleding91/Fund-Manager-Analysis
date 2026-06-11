@@ -43,6 +43,7 @@ class ScreenedFund:
     meets_count: bool = False  # passes the "<= MAX_HOLDINGS issuers" branch
     meets_weight: bool = False  # passes the "top-N >= TOP_N_MIN_PCT" branch
     etf_pct: float = 0.0      # % of AUM held in ETFs / index funds (passive basket)
+    amendment_type: str = ""  # cover-page amendment type ("NEW HOLDINGS"/"RESTATEMENT"/"")
     filer_type: str = ""      # firm-type tag (set in pipeline via classify.firm_type)
     reject_reason: str = ""   # why the mechanical screen failed ("" if it passed)
     holdings: list[AggHolding] = field(default_factory=list)
@@ -148,6 +149,7 @@ def screen_filing(filing: ParsedFiling) -> ScreenedFund:
         meets_count=meets_count,
         meets_weight=meets_weight,
         etf_pct=etf_pct,
+        amendment_type=filing.amendment_type,
         holdings=holdings,
     )
     sf.reject_reason = reject_reason(sf, filing.is_confidential)

@@ -99,7 +99,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(qrow["reject_reason"], "below_min_holdings")
 
     def test_migration_adds_new_columns(self):
-        """init_db migrates an older DB that lacks filer_type / reject_reason."""
+        """init_db migrates an older DB lacking filer_type / reject_reason / amendment_type."""
         import sqlite3
         # Simulate a pre-existing DB with the OLD schema: all the original columns
         # (and the indexes that reference them), but NOT the new filer_type /
@@ -130,6 +130,7 @@ class TestDatabase(unittest.TestCase):
             fundcols = {r[1] for r in conn.execute("PRAGMA table_info(funds)")}
             qcols = {r[1] for r in conn.execute("PRAGMA table_info(quarter_screen)")}
         self.assertIn("filer_type", fcols)
+        self.assertIn("amendment_type", fcols)
         self.assertIn("filer_type", fundcols)
         self.assertIn("filer_type", qcols)
         self.assertIn("reject_reason", qcols)
@@ -168,8 +169,12 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(row["passes_screen"], 0)   # now correctly failing
         self.assertEqual(row["filer_type"], "Holding Company")
 
+    def _current_accessions(self, conn):
+        return [r["accession"] for r in conn.execute(
+            "SELECT accession FROM filings WHERE is_current=1")]
+
     def test_amendment_supersedes(self):
-        """A later 13F-HR/A for the same period becomes current; original is not."""
+        """A later, full-size 13F-HR/A for the same period becomes current."""
         with connect(self.tmp) as conn:
             init_db(conn)
             upsert_fund(conn, _fund("acc-1", "2025-05-15", "13F-HR"))
@@ -177,12 +182,65 @@ class TestDatabase(unittest.TestCase):
             rows = conn.execute(
                 "SELECT accession, is_current FROM filings ORDER BY date_filed"
             ).fetchall()
-            current = conn.execute(
-                "SELECT accession FROM filings WHERE is_current=1"
-            ).fetchall()
+            current = self._current_accessions(conn)
         self.assertEqual(len(rows), 2)
         self.assertEqual(len(current), 1)
-        self.assertEqual(current[0]["accession"], "acc-2")  # amendment wins
+        self.assertEqual(current[0], "acc-2")  # full-size amendment wins
+
+    def test_new_holdings_amendment_does_not_supersede(self):
+        """A NEW HOLDINGS-typed 13F-HR/A is a partial add-on: original stays current."""
+        with connect(self.tmp) as conn:
+            init_db(conn)
+            upsert_fund(conn, _fund("acc-1", "2025-05-15", "13F-HR"))
+            amend = _fund("acc-2", "2025-08-14", "13F-HR/A", aum=1.1e9)
+            amend.amendment_type = "NEW HOLDINGS"
+            upsert_fund(conn, amend)
+            current = self._current_accessions(conn)
+            stored = conn.execute(
+                "SELECT amendment_type FROM filings WHERE accession='acc-2'"
+            ).fetchone()[0]
+        self.assertEqual(current, ["acc-1"])      # original still current
+        self.assertEqual(stored, "NEW HOLDINGS")  # type persisted on the row
+
+    def test_untyped_tiny_amendment_does_not_supersede(self):
+        """An untyped 13F-HR/A under half the original's size is treated as partial."""
+        with connect(self.tmp) as conn:
+            init_db(conn)
+            orig = _fund("acc-1", "2025-05-15", "13F-HR", aum=4.7e9)
+            orig.num_positions = 9
+            upsert_fund(conn, orig)
+            amend = _fund("acc-2", "2025-06-10", "13F-HR/A", aum=2.5e7)  # ~0.5% of AUM
+            amend.num_positions = 2  # < 50% of 9 positions, no amendment_type
+            upsert_fund(conn, amend)
+            current = self._current_accessions(conn)
+        self.assertEqual(current, ["acc-1"])  # tiny untyped amendment ignored
+
+    def test_restatement_amendment_supersedes(self):
+        """A RESTATEMENT-typed 13F-HR/A replaces the book even when smaller."""
+        with connect(self.tmp) as conn:
+            init_db(conn)
+            orig = _fund("acc-1", "2025-05-15", "13F-HR", aum=4.7e9)
+            orig.num_positions = 9
+            upsert_fund(conn, orig)
+            amend = _fund("acc-2", "2025-06-10", "13F-HR/A", aum=1e9)
+            amend.num_positions = 2
+            amend.amendment_type = "RESTATEMENT"
+            upsert_fund(conn, amend)
+            current = self._current_accessions(conn)
+        self.assertEqual(current, ["acc-2"])  # restatement wins regardless of size
+
+    def test_later_full_hr_still_supersedes(self):
+        """A later plain 13F-HR (not an /A) always supersedes, even if smaller."""
+        with connect(self.tmp) as conn:
+            init_db(conn)
+            orig = _fund("acc-1", "2025-05-15", "13F-HR", aum=4.7e9)
+            orig.num_positions = 9
+            upsert_fund(conn, orig)
+            refile = _fund("acc-2", "2025-06-10", "13F-HR", aum=1e9)
+            refile.num_positions = 2
+            upsert_fund(conn, refile)
+            current = self._current_accessions(conn)
+        self.assertEqual(current, ["acc-2"])  # latest full filing wins
 
 
 if __name__ == "__main__":

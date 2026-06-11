@@ -9,6 +9,7 @@ We parse namespace-agnostically using each element's local name.
 """
 from __future__ import annotations
 
+import html
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -48,6 +49,8 @@ class ParsedFiling:
     accession: str
     reported_value_total: float    # from cover page (filing units)
     reported_entry_total: int      # from cover page (row count)
+    amendment_type: str = ""       # cover-page <amendmentType>: "NEW HOLDINGS",
+                                   # "RESTATEMENT", or "" (absent / not an amendment)
     is_confidential: bool = False  # holdings omitted via confidential treatment
     holdings: list[Holding] = field(default_factory=list)
 
@@ -125,6 +128,7 @@ def parse_submission(submission_text: str, *, cik: str, form_type: str,
     period = ""
     value_total = 0.0
     entry_total = 0
+    amendment_type = ""
     is_confidential = False
     holdings: list[Holding] = []
 
@@ -139,8 +143,11 @@ def parse_submission(submission_text: str, *, cik: str, form_type: str,
                     continue
                 holdings.append(
                     Holding(
-                        name_of_issuer=_find_text(entry, "nameOfIssuer") or "",
-                        title_of_class=_find_text(entry, "titleOfClass") or "",
+                        # Some filings double-escape text ("S&amp;amp;P" survives the
+                        # XML parse as "S&amp;P"); unescape once more so the DB
+                        # stores plain text ("S&P"), never HTML entities.
+                        name_of_issuer=html.unescape(_find_text(entry, "nameOfIssuer") or ""),
+                        title_of_class=html.unescape(_find_text(entry, "titleOfClass") or ""),
                         cusip=(_find_text(entry, "cusip") or "").upper(),
                         value=_to_float(_find_text(entry, "value")),
                         shares=_to_float(_find_text(entry, "sshPrnamt")),
@@ -151,9 +158,13 @@ def parse_submission(submission_text: str, *, cik: str, form_type: str,
         else:
             # cover page (primary_doc): pull manager name + period + totals
             if not manager_name:
-                manager_name = _find_text(root, "name") or ""
+                manager_name = html.unescape(_find_text(root, "name") or "")
             if not period:
                 period = _parse_period(_find_text(root, "periodOfReport"))
+            if not amendment_type:
+                # 13F-HR/A cover pages carry <amendmentInfo><amendmentType>:
+                # "NEW HOLDINGS" (partial add-on) or "RESTATEMENT" (full book).
+                amendment_type = (_find_text(root, "amendmentType") or "").strip().upper()
             vt = _find_text(root, "tableValueTotal")
             if vt:
                 value_total = _to_float(vt)
@@ -176,6 +187,7 @@ def parse_submission(submission_text: str, *, cik: str, form_type: str,
         accession=accession,
         reported_value_total=value_total,
         reported_entry_total=entry_total,
+        amendment_type=amendment_type,
         is_confidential=is_confidential,
         holdings=holdings,
     )

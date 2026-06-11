@@ -12,8 +12,13 @@ from src.screener import screen_filing             # noqa: E402
 
 
 def _submission(holdings_xml: str, *, prefix: str = "", manager="Test Capital LP",
-                period="03-31-2025", value_total="3000000000", entry_total="2") -> str:
-    """Build a minimal SGML submission with a cover page + information table."""
+                period="03-31-2025", value_total="3000000000", entry_total="2",
+                cover_extra="") -> str:
+    """Build a minimal SGML submission with a cover page + information table.
+
+    ``cover_extra`` is raw XML injected into <coverPage> (e.g. the
+    <isAmendment>/<amendmentInfo> block of a 13F-HR/A).
+    """
     p = f"{prefix}:" if prefix else ""
     ns = f' xmlns:{prefix}="http://www.sec.gov/edgar/thirteenffiler"' if prefix else ""
     return f"""<SEC-DOCUMENT>
@@ -23,7 +28,7 @@ def _submission(holdings_xml: str, *, prefix: str = "", manager="Test Capital LP
 <edgarSubmission>
   <headerData><filerInfo><periodOfReport>{period}</periodOfReport></filerInfo></headerData>
   <formData>
-    <coverPage><filingManager><name>{manager}</name></filingManager></coverPage>
+    <coverPage>{cover_extra}<filingManager><name>{manager}</name></filingManager></coverPage>
     <summaryPage><tableValueTotal>{value_total}</tableValueTotal><tableEntryTotal>{entry_total}</tableEntryTotal></summaryPage>
   </formData>
 </edgarSubmission>
@@ -62,6 +67,38 @@ class TestParser(unittest.TestCase):
         self.assertEqual(pf.quarter_label, "2025-Q1")
         self.assertEqual(len(pf.holdings), 2)
         self.assertEqual(pf.reported_entry_total, 2)
+
+    def test_amendment_type_parsed(self):
+        """A NEW HOLDINGS amendment's cover-page type lands on ParsedFiling."""
+        cover = ("<isAmendment>true</isAmendment><amendmentNo>1</amendmentNo>"
+                 "<amendmentInfo><amendmentType>NEW HOLDINGS</amendmentType>"
+                 "<confDeniedExpired>false</confDeniedExpired></amendmentInfo>")
+        xml = _entry("ALPHA CORP", "000000100", "2000000000", "1000")
+        pf = parse_submission(_submission(xml, cover_extra=cover), cik="1",
+                              form_type="13F-HR/A", date_filed="2025-08-14",
+                              accession="acc-a")
+        self.assertEqual(pf.amendment_type, "NEW HOLDINGS")
+
+    def test_amendment_type_defaults_empty(self):
+        """A plain 13F-HR (no amendment block) gets amendment_type == ''."""
+        xml = _entry("ALPHA CORP", "000000100", "2000000000", "1000")
+        pf = parse_submission(_submission(xml), cik="1", form_type="13F-HR",
+                              date_filed="2025-05-15", accession="acc-1")
+        self.assertEqual(pf.amendment_type, "")
+
+    def test_double_escaped_names_unescaped(self):
+        """Doubly-escaped text ('&amp;amp;' in the raw XML) is stored as plain '&'.
+
+        lxml decodes the XML escape once ('&amp;amp;' -> '&amp;'); the parser
+        must html.unescape() the remaining literal entity so the DB never holds
+        'S&amp;P'-style strings that templates would escape a second time.
+        """
+        xml = _entry("ALPHA &amp;amp; BETA CORP", "000000100", "2000000000", "1000")
+        pf = parse_submission(
+            _submission(xml, manager="SMITH &amp;amp; JONES &amp;#039;A&amp;#039; LP"),
+            cik="1", form_type="13F-HR", date_filed="2025-05-15", accession="a")
+        self.assertEqual(pf.holdings[0].name_of_issuer, "ALPHA & BETA CORP")
+        self.assertEqual(pf.manager_name, "SMITH & JONES 'A' LP")
 
     def test_namespace_prefixed(self):
         """Filings that use namespace prefixes (<ns1:infoTable>) must still parse."""

@@ -8,7 +8,8 @@ import logging
 from dataclasses import dataclass, field
 
 from . import classify, config
-from .database import connect, init_db, upsert_fund, record_screen, stats
+from .database import (connect, init_db, upsert_fund, record_screen, stats,
+                       is_partial_amendment_filing)
 from .edgar_client import EdgarClient, FilingRef
 from .parser import parse_submission
 from .screener import screen_filing, ScreenedFund
@@ -58,7 +59,11 @@ def process_ref(conn, client: EdgarClient, ref: FilingRef, *,
     # Tag the filer's type (fact about the institution), with per-CIK overrides
     # layered on the name heuristic. This single chokepoint sees every filing.
     sf.filer_type = classify.firm_type(sf.cik, sf.manager_name)
-    if record_all:
+    # A partial 13F-HR/A ("new holdings" add-on) must not overwrite the
+    # quarter_screen ledger row for its quarter — the ledger is keyed by
+    # (cik, quarter) and would otherwise record the add-on's tiny metrics
+    # as the manager's book. is_current handles supersession separately.
+    if record_all and not is_partial_amendment_filing(conn, sf):
         record_screen(conn, sf)
     if sf.passes_screen or store_all:
         upsert_fund(conn, sf)

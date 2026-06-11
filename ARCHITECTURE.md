@@ -196,9 +196,10 @@ fourth is the new criteria ledger.
 
 **Two flags that are easy to confuse:**
 - **`passes_screen`** — did this filing meet the selection criteria that quarter?
-- **`is_current`** — is this the live filing for that manager+period? An
-  amendment (`13F-HR/A`) supersedes the original, so the original's
-  `is_current` flips to 0.
+- **`is_current`** — is this the live filing for that manager+period? A
+  restatement amendment (`13F-HR/A`) supersedes the original, so the original's
+  `is_current` flips to 0 — but a *partial* "new holdings" amendment does not
+  (see §7).
 
 **Why `quarter_screen` exists:** it records the screen result for *every* filer
 we scan, not just the ones that pass. That lets `rebuild_universe.py` cheaply
@@ -287,13 +288,17 @@ python3 prune_quarters.py --keep 2026-Q1 --dry-run    # preview, change nothing
   index can restate an *old* quarter. During a `store_all` backfill these can
   pull in unwanted historical quarters — that's why `prune_quarters.py` exists to
   trim the DB back to the tracked window.
-- **Partial-amendment quirk (KNOWN ISSUE, not yet fixed):** some `13F-HR/A`
-  filings amend only a few lines, not the whole book. Because `is_current` makes
-  the amendment supersede the original, a manager's quarter can look sparse (e.g.
-  Berkshire's 2025-Q1 current filing is a 3-holding amendment, while the full
-  33-issuer original sits with `is_current=0`). This inflates the next quarter's
-  "new buys" count. Flagged for a follow-up; the fix is to treat partial
-  amendments as overlays on the original rather than full replacements.
+- **Partial-amendment quirk (FIXED 2026-06-10):** some `13F-HR/A` filings amend
+  only a few lines, not the whole book (e.g. Berkshire's 2025-Q1 4-position
+  add-on vs. its 36-position original). The parser now stores the cover page's
+  `<amendmentType>` on each filing, and `is_current` follows this rule: latest
+  filing wins, EXCEPT a `13F-HR/A` never supersedes when it is *partial* — its
+  amendment type says `NEW HOLDINGS`, or the type is unknown and the filing has
+  under 50% of both the positions and the value of the largest sibling filing
+  for that period. `RESTATEMENT` (and full-size) amendments still supersede,
+  and partial amendments are also kept from overwriting the `quarter_screen`
+  ledger. Historical rows were repaired with `repair_amendments.py` (which also
+  un-escapes doubly-escaped issuer/manager names like `S&amp;P`).
 - **SEC politeness:** `config.py` caps requests at 6/sec (under the SEC's 10/sec
   limit). A full quarter scan is intentionally slow. Contact email is in
   `config.CONTACT_EMAIL`, overridable via the `SEC_CONTACT_EMAIL` env var / repo

@@ -5,9 +5,10 @@
 <section class="hero">
   <div class="eyebrow">SEC 13F screen · {{ quarter }}</div>
   <h1>Where concentrated, value-oriented capital is invested</h1>
-  <p class="lede">A quarterly screen of institutional managers reporting more than $2&nbsp;billion in U.S.
-  equity holdings across fewer than 30 companies — the high-conviction end of the 13F universe. Built
-  automatically from public SEC filings.</p>
+  <p class="lede">A curated universe of institutional managers reporting more than $2&nbsp;billion in
+  concentrated U.S. equity portfolios (30 or fewer companies, or up to 50 when the top&nbsp;10 are
+  &ge;80% of assets) — the high-conviction end of the 13F universe. Membership is sticky: see the
+  <a href="methodology.html">methodology</a>. Built automatically from public SEC filings.</p>
 </section>
 
 <section class="section">
@@ -39,7 +40,7 @@
   <div class="grid-2">
     <div class="card">
       <h3>Who passes the screen</h3>
-      <p class="hint">Filer types — most are genuine stock-pickers; the rest are filtered out on the Managers page.</p>
+      <p class="hint">Filer types in the universe — market-makers, corporates, sovereigns and banks are excluded outright.</p>
       <div class="barlist">
         {% for m in u.type_mix %}
         <div class="barrow">
@@ -70,7 +71,7 @@
   <div class="grid-2">
     <div class="card">
       <h3>Portfolio concentration</h3>
-      <p class="hint">Number of distinct companies held (the screen caps this below 30).</p>
+      <p class="hint">Number of distinct companies held. Admission requires &le;30 (or &le;50 if top-heavy); lapsed members can sit above that.</p>
       <div class="histogram">
         {% for b in u.issuer_hist %}
         <div class="histobar">
@@ -99,7 +100,7 @@
 
 <section class="section">
   <h2>Most-held stocks</h2>
-  <p class="section-sub">The companies owned by the most screened managers this quarter — a conviction signal.
+  <p class="section-sub">The companies owned by the most members this quarter — a conviction signal (ETF/index positions excluded).
   <a href="{{ root }}stocks.html">See all &rarr;</a></p>
   <div class="card">
     <div class="barlist">
@@ -116,8 +117,8 @@
 
 {% if u.new_managers %}
 <section class="section">
-  <h2>New to the screen</h2>
-  <p class="section-sub">Managers that qualified this quarter but not last{% if u.prev_quarter %} ({{ u.prev_quarter }}){% endif %}.</p>
+  <h2>New members</h2>
+  <p class="section-sub">Managers that qualified for the universe for the first time this quarter — same list as the <a href="moves.html">This quarter</a> page.</p>
   <div class="table-wrap">
     <table class="data">
       <thead><tr><th class="no-sort">Manager</th><th class="no-sort num">AUM</th><th class="no-sort num"># Holdings</th></tr></thead>

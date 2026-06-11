@@ -37,7 +37,7 @@
       <div class="section-sub" style="margin:0 0 6px;">Managers holding</div>
       <svg viewBox="0 0 {{ s.holders_svg.width }} {{ s.holders_svg.height }}" width="{{ s.holders_svg.width }}" height="{{ s.holders_svg.height }}" role="img" aria-label="Number of managers holding over time">
         <polyline class="line" points="{{ s.holders_svg.polyline }}"></polyline>
-        {% for d in s.holders_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }} managers</title></circle>{% endfor %}
+        {% for d in s.holders_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }} manager{{ '' if d.value == '1' else 's' }}</title></circle>{% endfor %}
         <text class="axislab" x="{{ s.holders_svg.dots[0].x }}" y="{{ s.holders_svg.height - 6 }}">{{ s.holders_svg.first_label }}</text>
         <text class="axislab" x="{{ s.holders_svg.width - 8 }}" y="{{ s.holders_svg.height - 6 }}" text-anchor="end">{{ s.holders_svg.last_label }}</text>
       </svg>

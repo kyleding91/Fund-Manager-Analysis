@@ -146,11 +146,15 @@ def build(out_dir: Path, quarter: str | None = None) -> dict:
     _write(out_dir / "data" / f"managers-{_quarter_slug(quarter)}.csv",
            _managers_csv(funds))
 
+    # Issuers that get a per-stock page this build — fund-page holdings and the
+    # moves page only hyperlink companies in this set (no dead links).
+    linkable = set(sd.all_stock_cusips(conn, quarter))
+
     # per-fund pages — one for every manager with stored history, so a manager
     # that qualified only in an earlier quarter still has a complete page.
     fund_tpl = env.get_template("fund.html")
     for cik in sd.all_manager_ciks(conn):
-        detail = sd.fund_detail(conn, cik, quarter)
+        detail = sd.fund_detail(conn, cik, quarter, linkable=linkable)
         if not detail:
             continue
         _write(out_dir / "funds" / f"{cik}.html",
@@ -161,7 +165,7 @@ def build(out_dir: Path, quarter: str | None = None) -> dict:
     # quarter, so every company name on the most-held page links to its holders.
     stock_tpl = env.get_template("stock.html")
     stock_pages = 0
-    for cusip in sd.all_stock_cusips(conn, quarter):
+    for cusip in sorted(linkable):
         detail = sd.stock_detail(conn, cusip, quarter)
         if not detail:
             continue

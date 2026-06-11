@@ -10,17 +10,19 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime
 
-from . import classify, config, curation, insights, queries
+from . import classify, config, curation, insights, queries, roster
 
 
 # --- formatting ----------------------------------------------------------
 def usd(x: float | None) -> str:
     if x is None:
         return "-"
+    sign = "−" if x < 0 else ""        # "−$3.41B", never "$-3.41B"
+    ax = abs(x)
     for unit, div in (("T", 1e12), ("B", 1e9), ("M", 1e6), ("K", 1e3)):
-        if abs(x) >= div:
-            return f"${x/div:,.2f}{unit}"
-    return f"${x:,.0f}"
+        if ax >= div:
+            return f"{sign}${ax/div:,.2f}{unit}"
+    return f"{sign}${ax:,.0f}"
 
 
 def pct(x: float | None) -> str:
@@ -107,6 +109,11 @@ def _fund_rows(conn, quarter: str) -> list[dict]:
     df = queries.list_funds(conn, quarter=quarter, min_aum=0, max_issuers=100000)
     rows = []
     for r in df.itertuples(index=False):
+        # Skip "notice" filings that disclose no holdings (e.g. positions
+        # reported by another manager): a $0 / 0-name row is noise in the
+        # directory and the homepage stats.
+        if not (r.num_positions or 0) and not (r.total_aum_usd or 0):
+            continue
         # Prefer the stored firm-type tag (honors per-CIK overrides) so the
         # charts match the screen's actual decision; fall back to the name
         # heuristic only for older rows with no stored tag.
@@ -168,15 +175,17 @@ def universe(conn, quarter: str) -> dict:
     mix = sorted(by_cat.values(), key=lambda d: d["count"], reverse=True)
     _bars(mix, "count")
 
+    # Bins cover EVERY member, including lapsed ones currently below the $2B
+    # floor or above 30 names — the histograms must sum to the universe size.
     aum_hist = _histogram(
         [r["aum_b"] for r in rows],
-        [2, 5, 10, 25, 50, 100, 1e9],
-        ["$2–5B", "$5–10B", "$10–25B", "$25–50B", "$50–100B", "$100B+"],
+        [0, 2, 5, 10, 25, 50, 100, 1e9],
+        ["<$2B", "$2–5B", "$5–10B", "$10–25B", "$25–50B", "$50–100B", "$100B+"],
     )
     iss_hist = _histogram(
         [r["num_issuers"] for r in rows],
-        [0, 5, 10, 15, 20, 25, 30],
-        ["1–4", "5–9", "10–14", "15–19", "20–24", "25–29"],
+        [0, 5, 10, 15, 20, 25, 31, 100000],
+        ["1–4", "5–9", "10–14", "15–19", "20–24", "25–30", "31+"],
     )
 
     mh = insights.most_held(conn, quarter, limit=15)
@@ -202,12 +211,13 @@ def universe(conn, quarter: str) -> dict:
         and classify.classify_manager(row.manager_name) == classify.MANAGER
     ][:12]
 
-    nm = insights.new_managers(conn, quarter)
+    # New members this quarter — same definition as the This-quarter page
+    # (roster joins), so the two lists can never disagree.
+    chg = insights.screen_changes(conn, quarter) or {"entered": []}
     new_mgrs = [
-        {"manager_name": row.manager_name, "aum": usd(float(row.total_aum_usd)),
-         "num_issuers": int(row.num_issuers)}
-        for row in nm.itertuples(index=False)
-        if classify.classify_manager(row.manager_name) == classify.MANAGER
+        {"manager_name": r["manager_name"], "aum": usd(float(r["total_aum_usd"] or 0)),
+         "num_issuers": int(r["num_issuers"] or 0)}
+        for r in chg["entered"]
     ][:12]
 
     total_aum = sum(r["aum_usd"] for r in rows)
@@ -405,6 +415,19 @@ def _universe_stats(conn, quarter: str) -> dict:
     return {"count": int(row["n"] or 0), "aum_usd": float(row["aum"] or 0)}
 
 
+def _holder_counts(conn, quarter: str) -> dict[str, int]:
+    """Holders per issuer across the FULL shown universe in one quarter."""
+    rows = conn.execute(
+        f"""SELECT h.issuer_cusip AS cusip, COUNT(DISTINCT f.cik) AS n
+            FROM holdings h JOIN filings f ON f.id = h.filing_id
+            WHERE f.is_current = 1 AND {curation.screen_predicate('f.')}
+              AND f.quarter_label = ?
+            GROUP BY h.issuer_cusip""",
+        (quarter,),
+    ).fetchall()
+    return {r["cusip"]: int(r["n"]) for r in rows}
+
+
 def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10) -> dict | None:
     """Everything the "This quarter" money-moves page needs, or None if there
     is no prior quarter to compare against."""
@@ -414,17 +437,28 @@ def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10)
     pairs = flows["pairs"]
     prev_q = flows["prev_quarter"]
 
+    # Only link companies that actually get a stock page this build (pages are
+    # generated for issuers held in the anchor quarter — a fully-exited stock
+    # has no page, so its name renders unlinked).
+    linkable = set(all_stock_cusips(conn, quarter))
+    # Holder counts shown to visitors use the FULL universe (matching the stock
+    # pages), not just the members compared in the flow math.
+    holders_now_all = _holder_counts(conn, quarter)
+    holders_prev_all = _holder_counts(conn, prev_q)
+
     stocks_agg = insights.aggregate_stock_flows(pairs)
 
     def _stock_row(s):
         return {
             "cusip": s["cusip"], "issuer": s["issuer"],
+            "linked": s["cusip"] in linkable,
             "net_flow": usd(abs(s["net_flow_usd"])),
             "net_flow_usd": s["net_flow_usd"],
             "share_change": _share_change(s["shares_now"], s["shares_prev"]),
             "n_new": s["n_new"], "n_added": s["n_added"],
             "n_trimmed": s["n_trimmed"], "n_exited": s["n_exited"],
-            "holders_now": s["holders_now"], "holders_prev": s["holders_prev"],
+            "holders_now": holders_now_all.get(s["cusip"], 0),
+            "holders_prev": holders_prev_all.get(s["cusip"], 0),
             "value": usd(s["value_usd"]),
         }
 
@@ -438,6 +472,7 @@ def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10)
         return {
             "cik": m["cik"], "manager_name": m["manager_name"],
             "cusip": m["cusip"], "issuer": m["issuer"],
+            "linked": m["cusip"] in linkable,
             "change_type": m["change_type"], "emoji": emoji.get(m["change_type"], ""),
             "flow": usd(abs(m["flow_usd"])), "flow_usd": m["flow_usd"],
             "share_change": _share_change(m["shares"], m["prev_shares"]),
@@ -484,8 +519,10 @@ def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10)
         "lapsed": [{"cik": str(r["cik"]), "name": r["manager_name"],
                     "aum": usd(float(r["total_aum_usd"] or 0)),
                     "num_issuers": int(r["num_issuers"] or 0),
-                    "reason": _LAPSE_REASONS.get(r.get("reject_reason") or "",
-                                                 r.get("reject_reason") or "")}
+                    "reason": ("filed without disclosing holdings"
+                               if not (r["num_issuers"] or 0)
+                               else _LAPSE_REASONS.get(r.get("reject_reason") or "",
+                                                       r.get("reject_reason") or ""))}
                    for r in chg.get("lapsed", [])],
     }
 
@@ -508,18 +545,25 @@ def _median(xs: list[int]) -> int:
     return int(s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2)
 
 
-def _holdings_for(conn, filing_id: int) -> list[dict]:
+def _holdings_for(conn, filing_id: int, linkable: set[str] | None = None) -> list[dict]:
     holds = queries.fund_holdings(conn, int(filing_id))
     max_pct = float(holds["pct_of_portfolio"].max() or 1) if len(holds) else 1
-    return [{
-        "issuer": h.name_of_issuer, "title": h.title_of_class,
-        "value": usd(float(h.value_usd)), "value_usd": float(h.value_usd),
-        "shares": f"{float(h.shares):,.0f}", "shares_type": h.shares_type,
-        "put_call": h.put_call or "",
-        "pct": pct(float(h.pct_of_portfolio)),
-        "pct_val": round(float(h.pct_of_portfolio), 2),
-        "width": round(float(h.pct_of_portfolio) / max_pct * 100, 2),
-    } for h in holds.itertuples(index=False)]
+    linkable = linkable or set()
+    out = []
+    for h in holds.itertuples(index=False):
+        cusip6 = (h.cusip or "")[:6].upper()
+        out.append({
+            "issuer": h.name_of_issuer, "title": h.title_of_class,
+            "cusip6": cusip6,
+            "linked": cusip6 in linkable,   # only link issuers that get a stock page
+            "value": usd(float(h.value_usd)), "value_usd": float(h.value_usd),
+            "shares": f"{float(h.shares):,.0f}", "shares_type": h.shares_type,
+            "put_call": h.put_call or "",
+            "pct": pct(float(h.pct_of_portfolio)),
+            "pct_val": round(float(h.pct_of_portfolio), 2),
+            "width": round(float(h.pct_of_portfolio) / max_pct * 100, 2),
+        })
+    return out
 
 
 def _moves_for(conn, cik: str, quarter: str) -> dict | None:
@@ -543,7 +587,8 @@ def _moves_for(conn, cik: str, quarter: str) -> dict | None:
     }
 
 
-def fund_detail(conn, cik: str, quarter: str, max_quarters: int = 5) -> dict | None:
+def fund_detail(conn, cik: str, quarter: str, max_quarters: int = 5,
+                linkable: set[str] | None = None) -> dict | None:
     """Everything one fund page needs.
 
     Returns header info, the full AUM timeline (sparkline), and a list of the
@@ -551,6 +596,7 @@ def fund_detail(conn, cik: str, quarter: str, max_quarters: int = 5) -> dict | N
     carries its own holdings and quarter-over-quarter moves, so the page can let
     the visitor switch between quarters client-side. All quarters we've ever
     loaded for the fund stay in the database; we simply surface the latest few.
+    `linkable` is the set of issuer CUSIPs that get a stock page this build.
     """
     tl = queries.fund_timeline(conn, str(cik))
     if tl.empty:
@@ -561,19 +607,28 @@ def fund_detail(conn, cik: str, quarter: str, max_quarters: int = 5) -> dict | N
     manager_name = row[0] if row else str(cik)
     stored = (row[1] if row else "") or ""
     cat = stored if stored in classify.CATEGORY_EMOJI else classify.classify_manager(manager_name)
+    is_member = curation._norm(str(cik)) in roster.active_ciks()
 
     # Full history for the sparkline (oldest -> newest).
     timeline = [{"label": t.quarter_label, "value": float(t.total_aum_usd)}
                 for t in tl.itertuples(index=False)]
 
-    # Newest -> oldest, keep the most recent `max_quarters`.
-    rows = list(tl.itertuples(index=False))[::-1][:max_quarters]
+    # Per-quarter mechanical reject reasons (plain English) for the callouts.
+    reasons = {r["quarter_label"]: (r["reject_reason"] or "")
+               for r in conn.execute(
+                   "SELECT quarter_label, reject_reason FROM quarter_screen "
+                   "WHERE cik = ?", (str(cik),))}
+
+    # Newest -> oldest; display the most recent `max_quarters`, but look up each
+    # quarter's predecessor in the FULL history (the oldest *displayed* quarter
+    # usually still has an earlier filing on record — its moves compare to that).
+    rows_all = list(tl.itertuples(index=False))[::-1]
     quarters = []
-    for i, t in enumerate(rows):
-        # The next item in `rows` is this quarter's predecessor (older).
-        prev_label = rows[i + 1].quarter_label if i + 1 < len(rows) else None
+    for i, t in enumerate(rows_all[:max_quarters]):
+        prev_label = rows_all[i + 1].quarter_label if i + 1 < len(rows_all) else None
         meets = bool(getattr(t, "passes_screen", 1))
         top_n_pct = float(getattr(t, "top_n_pct", 0.0) or 0.0)
+        raw_reason = reasons.get(t.quarter_label, "")
         quarters.append({
             "quarter": t.quarter_label,
             "slug": t.quarter_label.replace("-", "").lower(),
@@ -584,11 +639,13 @@ def fund_detail(conn, cik: str, quarter: str, max_quarters: int = 5) -> dict | N
             "num_positions": int(t.num_positions),
             "top_n_pct": pct(top_n_pct),
             "meets_criteria": meets,
+            "lapse_reason": _LAPSE_REASONS.get(raw_reason, raw_reason)
+                            if not meets else "",
             "form_type": t.form_type,
             "date_filed": t.date_filed,
             "accession": t.accession,
             "sec_url": sec_filing_url(str(cik), str(t.accession)),
-            "holdings": _holdings_for(conn, t.filing_id),
+            "holdings": _holdings_for(conn, t.filing_id, linkable),
             "moves": _moves_for(conn, str(cik), t.quarter_label),
             "prev_quarter": prev_label,
         })
@@ -599,6 +656,7 @@ def fund_detail(conn, cik: str, quarter: str, max_quarters: int = 5) -> dict | N
         "category": cat,
         "type_label": f"{classify.CATEGORY_EMOJI[cat]} {cat}",
         "emoji": classify.CATEGORY_EMOJI[cat],
+        "is_member": is_member,
         "latest_quarter": quarters[0]["quarter"],
         "num_quarters_total": len(timeline),
         "timeline": timeline,

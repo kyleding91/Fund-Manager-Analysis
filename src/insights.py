@@ -25,8 +25,15 @@ def previous_quarter(conn, quarter: str) -> str | None:
 
 # --- insight computations ------------------------------------------------
 def most_held(conn, quarter: str, limit: int = 25) -> pd.DataFrame:
-    """Stocks held by the most screened funds in a quarter (conviction signal)."""
-    return pd.read_sql_query(
+    """Stocks held by the most screened funds in a quarter (conviction signal).
+
+    ETFs / index funds are excluded: a "most held" list is a conviction signal
+    about companies, and ETF positions are cash-parking, not stock-picking.
+    (Six-digit issuer CUSIPs also lump many distinct funds of one sponsor into
+    a single row, which would make an ETF entry doubly misleading.)
+    """
+    from . import classify
+    df = pd.read_sql_query(
         f"""SELECT h.issuer_cusip AS cusip,
                   MAX(h.name_of_issuer) AS issuer,
                   COUNT(DISTINCT f.cik) AS num_funds,
@@ -38,8 +45,10 @@ def most_held(conn, quarter: str, limit: int = 25) -> pd.DataFrame:
            GROUP BY h.issuer_cusip
            ORDER BY num_funds DESC, total_value DESC
            LIMIT :lim""",
-        conn, params={"q": quarter, "lim": limit},
+        conn, params={"q": quarter, "lim": limit * 2},
     )
+    df = df[~df["issuer"].map(lambda n: classify.is_etf_name(n or ""))]
+    return df.head(limit).reset_index(drop=True)
 
 
 def holders_of(conn, issuer_cusip: str, quarter: str) -> pd.DataFrame:

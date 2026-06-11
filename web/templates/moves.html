@@ -30,7 +30,7 @@
           <tbody>
             {% for s in m.money_in %}
             <tr>
-              <td><a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a></td>
+              <td>{% if s.linked %}<a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a>{% else %}{{ s.issuer }}{% endif %}</td>
               <td class="num delta-pos">{{ s.share_change }}</td>
               <td class="num">{{ s.net_flow }}</td>
               <td class="num">{{ s.holders_prev }} → {{ s.holders_now }}</td>
@@ -49,7 +49,7 @@
           <tbody>
             {% for s in m.money_out %}
             <tr>
-              <td><a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a></td>
+              <td>{% if s.linked %}<a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a>{% else %}{{ s.issuer }}{% endif %}</td>
               <td class="num delta-neg">{{ s.share_change }}</td>
               <td class="num">{{ s.net_flow }}</td>
               <td class="num">{{ s.holders_prev }} → {{ s.holders_now }}</td>
@@ -73,7 +73,7 @@
           {% for p in m.biggest_buys %}
           <tr>
             <td><a href="{{ root }}funds/{{ p.cik }}.html">{{ p.manager_name }}</a></td>
-            <td><span class="chg chg-{{ p.change_type }}">{{ p.emoji }}</span> <a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a></td>
+            <td><span class="chg chg-{{ p.change_type }}">{{ p.emoji }}</span> {% if p.linked %}<a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a>{% else %}{{ p.issuer }}{% endif %}</td>
             <td class="num delta-pos">{{ p.share_change }}</td>
             <td class="num">{{ p.flow }}</td>
           </tr>
@@ -88,7 +88,7 @@
           {% for p in m.biggest_sells %}
           <tr>
             <td><a href="{{ root }}funds/{{ p.cik }}.html">{{ p.manager_name }}</a></td>
-            <td><span class="chg chg-{{ p.change_type }}">{{ p.emoji }}</span> <a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a></td>
+            <td><span class="chg chg-{{ p.change_type }}">{{ p.emoji }}</span> {% if p.linked %}<a href="{{ root }}stocks/{{ p.cusip }}.html">{{ p.issuer }}</a>{% else %}{{ p.issuer }}{% endif %}</td>
             <td class="num delta-neg">{{ p.share_change }}</td>
             <td class="num">{{ p.flow }}</td>
           </tr>

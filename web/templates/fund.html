@@ -12,7 +12,7 @@
 {% if f.aum_svg %}
 <section class="section">
   <h2>Assets under management over time</h2>
-  <p class="section-sub">13F AUM for each quarter this manager passed the screen ({{ f.num_quarters_total }} on record).</p>
+  <p class="section-sub">Disclosed 13F assets for every quarter on record ({{ f.num_quarters_total }}) — including quarters where the manager didn't meet the screen.</p>
   <div class="card spark">
     <svg viewBox="0 0 {{ f.aum_svg.width }} {{ f.aum_svg.height }}" width="{{ f.aum_svg.width }}" height="{{ f.aum_svg.height }}" role="img" aria-label="AUM over time">
       <polyline class="line" points="{{ f.aum_svg.polyline }}"></polyline>
@@ -48,7 +48,11 @@
     </div>
 
     {% if not q.meets_criteria %}
-    <p class="callout">Shown for history. This manager didn't meet the selection criteria in {{ q.quarter }} ({{ q.num_issuers }} issuers; top {{ criteria.top_n }} positions were {{ q.top_n_pct }} of AUM), so it isn't counted in this quarter's screened universe — but its filing is kept so the timeline and quarter-over-quarter moves stay continuous.</p>
+    {% if f.is_member %}
+    <p class="callout">This filing didn't meet the screen's criteria in {{ q.quarter }}{% if q.lapse_reason %} ({{ q.lapse_reason }}){% endif %} — but as a member of the universe roster, the manager stays listed by default pending review (see the <a href="{{ root }}methodology.html">methodology</a>).</p>
+    {% else %}
+    <p class="callout">Shown for history. This filing didn't meet the selection criteria in {{ q.quarter }}{% if q.lapse_reason %} ({{ q.lapse_reason }}){% endif %}, so the manager isn't part of the screened universe — its filings are kept so the timeline and quarter-over-quarter moves stay continuous.</p>
+    {% endif %}
     {% endif %}
 
     <h3 class="qsub">Holdings &mdash; {{ q.quarter }}</h3>
@@ -60,7 +64,7 @@
         <tbody>
           {% for h in q.holdings %}
           <tr>
-            <td>{{ h.issuer }}{% if h.put_call %} <span class="badge gray">{{ h.put_call }}</span>{% endif %}</td>
+            <td>{% if h.linked %}<a href="{{ root }}stocks/{{ h.cusip6 }}.html">{{ h.issuer }}</a>{% else %}{{ h.issuer }}{% endif %}{% if h.put_call %} <span class="badge gray">{{ h.put_call }}</span>{% endif %}</td>
             <td class="muted">{{ h.title }}</td>
             <td class="num">{{ h.value }}</td>
             <td class="num">{{ h.shares }}</td>
@@ -75,7 +79,7 @@
 
     <h3 class="qsub">Quarter-over-quarter moves &mdash; {{ q.quarter }}</h3>
     {% if q.moves %}
-    <p class="section-sub">Changes in share count versus {{ q.prev_quarter }} — what the manager actually bought or sold.</p>
+    <p class="section-sub">Changes in share count versus {{ q.prev_quarter or 'the prior filing' }} — what the manager actually bought or sold.</p>
     <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
       {% for c in q.moves.counts %}
       <div class="kpi"><div class="label">{{ c.emoji }} {{ c.kind|capitalize }}</div><div class="value">{{ c.n }}</div></div>
@@ -99,7 +103,7 @@
       </table>
     </div>
     {% else %}
-    <p class="muted">No position changes versus {{ q.prev_quarter }} — the portfolio was held steady.</p>
+    <p class="muted">No position changes versus {{ q.prev_quarter or 'the prior filing' }} — the portfolio was held steady.</p>
     {% endif %}
     {% else %}
     <p class="callout">This is the earliest quarter on record for this manager, so there's no prior filing to compare against yet. As new quarters load, moves will appear here.</p>
