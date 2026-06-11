@@ -285,17 +285,21 @@ def stock_detail(conn, issuer_cusip: str, quarter: str, max_quarters: int = 5) -
     universe holds it now, how each position changed since last quarter (by share
     count, like the manager pages), who newly bought or fully exited, and the
     combined position size + holder count over time.
+
+    A company nobody holds anymore but that WAS held last quarter still gets a
+    page — the "fully exited" story (who sold out, the trend dropping to zero).
+    Returns None only when there's nothing to tell in either quarter.
     """
     cur = insights.holders_of(conn, issuer_cusip, quarter)
-    if cur.empty:
-        return None
     prev_q = insights.previous_quarter(conn, quarter)
     prev = insights.holders_of(conn, issuer_cusip, prev_q) if prev_q else None
+    if cur.empty and (prev is None or prev.empty):
+        return None
     prev_val = {str(r.cik): float(r.value_usd or 0) for r in prev.itertuples(index=False)} if prev is not None else {}
     prev_sh = {str(r.cik): float(r.shares or 0) for r in prev.itertuples(index=False)} if prev is not None else {}
     prev_name = {str(r.cik): r.manager_name for r in prev.itertuples(index=False)} if prev is not None else {}
 
-    issuer = cur.iloc[0].issuer
+    issuer = cur.iloc[0].issuer if not cur.empty else prev.iloc[0].issuer
     emoji = {"new": "🟢", "added": "🔼", "trimmed": "🔽", "exited": "🔴"}
 
     holders, new_buyers = [], []
@@ -339,11 +343,19 @@ def stock_detail(conn, issuer_cusip: str, quarter: str, max_quarters: int = 5) -
     counts["exited"] = len(exits)
 
     # 5-quarter trend: combined value + holder count + total shares (shown
-    # universe only).
-    tr = list(insights.issuer_trend(conn, issuer_cusip).itertuples(index=False))[-max_quarters:]
-    value_pts = [{"label": t.quarter, "value": float(t.total_value or 0)} for t in tr]
-    holder_pts = [{"label": t.quarter, "value": int(t.holders or 0)} for t in tr]
-    share_pts = [{"label": t.quarter, "value": float(t.total_shares or 0)} for t in tr]
+    # universe only). A fully-exited company has no row for the anchor quarter,
+    # so append an explicit zero point — the charts should drop to 0, not stop.
+    trend_rows = [{"quarter": t.quarter, "total_value": float(t.total_value or 0),
+                   "holders": int(t.holders or 0),
+                   "total_shares": float(t.total_shares or 0)}
+                  for t in insights.issuer_trend(conn, issuer_cusip).itertuples(index=False)]
+    if cur.empty and (not trend_rows or trend_rows[-1]["quarter"] != quarter):
+        trend_rows.append({"quarter": quarter, "total_value": 0.0,
+                           "holders": 0, "total_shares": 0.0})
+    tr = trend_rows[-max_quarters:]
+    value_pts = [{"label": t["quarter"], "value": t["total_value"]} for t in tr]
+    holder_pts = [{"label": t["quarter"], "value": t["holders"]} for t in tr]
+    share_pts = [{"label": t["quarter"], "value": t["total_shares"]} for t in tr]
 
     universe = _shown_manager_count(conn, quarter)
     return {
@@ -363,10 +375,21 @@ def stock_detail(conn, issuer_cusip: str, quarter: str, max_quarters: int = 5) -
         "value_svg": aum_timeline_svg(value_pts),
         "holders_svg": aum_timeline_svg(holder_pts, fmt=lambda v: f"{int(v)}"),
         "shares_svg": aum_timeline_svg(share_pts, fmt=_shares),
-        "trend": [{"quarter": t.quarter, "value": usd(float(t.total_value or 0)),
-                   "holders": int(t.holders or 0),
-                   "shares": _shares(float(t.total_shares or 0))} for t in tr],
+        "trend": [{"quarter": t["quarter"], "value": usd(t["total_value"]),
+                   "holders": t["holders"],
+                   "shares": _shares(t["total_shares"])} for t in tr],
     }
+
+
+def stock_page_cusips(conn, quarter: str) -> set[str]:
+    """Issuers that get a stock page this build: held by a member in the anchor
+    quarter OR in the prior one — so a company everyone just exited still has a
+    page telling that story (and the moves page can link to it)."""
+    cusips = set(all_stock_cusips(conn, quarter))
+    prev_q = insights.previous_quarter(conn, quarter)
+    if prev_q:
+        cusips |= set(all_stock_cusips(conn, prev_q))
+    return cusips
 
 
 def _shares(x: float) -> str:
@@ -437,10 +460,9 @@ def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10)
     pairs = flows["pairs"]
     prev_q = flows["prev_quarter"]
 
-    # Only link companies that actually get a stock page this build (pages are
-    # generated for issuers held in the anchor quarter — a fully-exited stock
-    # has no page, so its name renders unlinked).
-    linkable = set(all_stock_cusips(conn, quarter))
+    # Only link companies that actually get a stock page this build (held in
+    # the anchor or the prior quarter — which includes full exits).
+    linkable = stock_page_cusips(conn, quarter)
     # Holder counts shown to visitors use the FULL universe (matching the stock
     # pages), not just the members compared in the flow math.
     holders_now_all = _holder_counts(conn, quarter)

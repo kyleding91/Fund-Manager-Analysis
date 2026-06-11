@@ -161,14 +161,20 @@ class TestInsights(unittest.TestCase):
             self.assertIsNone(site_data.quarter_moves(conn, "2024-Q4"))
 
     def test_stock_detail_exit(self):
-        """A manager that dropped a stock shows up as an exit on that stock's page."""
+        """A fully-sold stock still gets a page that tells the exit story."""
         with connect(self.db) as conn:
-            # BETA was held by A in Q4 and fully sold in Q1 -> no current holders.
-            self.assertIsNone(site_data.stock_detail(conn, "BBB000", "2025-Q1"))
-            # GAMMA is new in Q1 (A only); ALPHA's page lists A's prior BETA? no —
-            # exits are per-stock: check ALPHA has none, and that a held-then-sold
-            # stock with a *surviving* holder would list the exit. Here BETA has no
-            # surviving holder, so it has no page (None above), which is correct.
+            # BETA was held by A in Q4 and fully sold in Q1 -> zero current
+            # holders, but the page exists: exits listed, trend drops to zero.
+            d = site_data.stock_detail(conn, "BBB000", "2025-Q1")
+        self.assertEqual(d["issuer"], "BETA")
+        self.assertEqual(d["num_holders"], 0)
+        self.assertEqual(d["holders"], [])
+        self.assertEqual([e["name"] for e in d["exits"]], ["Alpha Fund"])
+        self.assertEqual(d["trend"][-1]["quarter"], "2025-Q1")
+        self.assertEqual(d["trend"][-1]["holders"], 0)   # explicit zero point
+        # A never-held cusip still returns None (nothing to tell).
+        with connect(self.db) as conn:
+            self.assertIsNone(site_data.stock_detail(conn, "ZZZ999", "2025-Q1"))
         with connect(self.db) as conn:
             d = site_data.stock_detail(conn, "GGG000", "2025-Q1")
         self.assertEqual(d["issuer"], "GAMMA")
