@@ -86,6 +86,12 @@ class TestBuildSite(unittest.TestCase):
         self.assertTrue((out / "assets" / "app.js").exists())
         # .nojekyll present for GitHub Pages.
         self.assertTrue((out / ".nojekyll").exists())
+        # Service worker gets a unique cache version stamped per build (so a
+        # redeploy invalidates returning visitors' old offline caches).
+        sw = (out / "sw.js").read_text(encoding="utf-8")
+        self.assertNotIn('const CACHE = "valueflow-v1"', sw)
+        self.assertIn('const CACHE = "valueflow-2025q1-', sw)
+        self.assertIn('"moves.html"', sw)
         # CSV export present.
         self.assertTrue((out / "data" / "managers-2025q1.csv").exists())
 

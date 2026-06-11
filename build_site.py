@@ -17,6 +17,7 @@ import argparse
 import csv
 import io
 import shutil
+import time
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -96,8 +97,17 @@ def build(out_dir: Path, quarter: str | None = None) -> dict:
 
     # PWA manifest + service worker live at the site ROOT so the worker's scope
     # covers every page (including /funds/*), making the site installable.
-    for name in ("manifest.webmanifest", "sw.js"):
-        shutil.copyfile(WEB / "static" / name, out_dir / name)
+    shutil.copyfile(WEB / "static" / "manifest.webmanifest",
+                    out_dir / "manifest.webmanifest")
+    # Stamp a unique cache version into the service worker each build. The
+    # version change makes every installed browser discard its old cache on the
+    # next visit (the worker's activate step deletes non-matching caches) — so
+    # a redeploy can never leave returning visitors on a mix of old/new pages.
+    sw = (WEB / "static" / "sw.js").read_text(encoding="utf-8")
+    build_id = f"valueflow-{_quarter_slug(quarter)}-{int(time.time())}"
+    sw = sw.replace('const CACHE = "valueflow-v1";',
+                    f'const CACHE = "{build_id}";')
+    (out_dir / "sw.js").write_text(sw, encoding="utf-8")
 
     # data
     universe = sd.universe(conn, quarter)

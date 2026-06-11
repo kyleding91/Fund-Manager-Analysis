@@ -1,10 +1,12 @@
 /* Value Flow service worker — makes the site installable and usable offline.
-   Bump CACHE when assets change so old caches are discarded. */
+   The CACHE name below is a placeholder: build_site.py stamps a unique version
+   into the deployed copy on every build, so each deploy discards old caches. */
 const CACHE = "valueflow-v1";
 
 // Core shell precached on install. Relative to the SW location (site root).
 const CORE = [
   "index.html",
+  "moves.html",
   "funds.html",
   "stocks.html",
   "methodology.html",
@@ -36,10 +38,13 @@ self.addEventListener("fetch", (event) => {
     return; // let the browser handle non-GET / cross-origin (e.g. fonts, CDN)
   }
 
-  // Page navigations: try the network first (fresh data), fall back to cache.
+  // Page navigations: network first, and REVALIDATE with the server
+  // (cache: "no-cache") so a CDN/browser HTTP-cached copy from minutes ago
+  // can't serve a stale page right after a deploy. Falls back to the offline
+  // cache only when the network is unreachable.
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: "no-cache" })
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy));

@@ -165,8 +165,9 @@ features & UI/UX (P1 "Quarterly Moves" page first).*
       and `python3 evaluate_screen.py --strict` **before** deploy; skip
       publishing and open a GitHub issue on failure (today a bad quarter would
       deploy silently — the audit exists but isn't wired into the pipeline).
-- [ ] Bump the PWA service-worker cache version automatically each build (key
-      it to the quarter label) so returning phone users see fresh data.
+- [x] Bump the PWA service-worker cache version automatically each build —
+      DONE 2026-06-10 (stamped per build; navigations also bypass the HTTP
+      cache) after stale pages showed up live post-deploy.
 - [ ] Manual dry-run of the full workflow from the Actions tab before the
       August 2026 deadline (13F due ~Aug 14; automation wakes Aug 16/23/28).
 
