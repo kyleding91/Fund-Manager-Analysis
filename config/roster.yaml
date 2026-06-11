@@ -450,7 +450,10 @@ members:
   name: Situational Awareness Partners LP
   joined: 2026-Q1
   added_by: screen
-  status: active
+  status: removed
+  removed_quarter: 2026-Q1
+  reason: 'duplicate filer: identical book to Situational Awareness LP (CIK 2045724)
+    — fund and GP both filed; keeping the LP'
 - cik: 1517857
   name: Soroban Capital Partners LP
   joined: 2025-Q1

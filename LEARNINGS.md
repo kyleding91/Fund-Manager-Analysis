@@ -62,6 +62,47 @@ this file periodically — say "tidy the learnings file" when the log gets long.
 
 ## Learning log (newest first)
 
+### 2026-06-10 — A dedicated reviewer agent finds what the builder can't
+**Context:** Asked for a subagent that reviews the static site page by page.
+Its first run on ~1,900 pages found **14 real issues** — including data
+corruption on the flagship Berkshire page — in a site the builder (same
+Claude!) had repeatedly checked and called clean.
+**Learning:** The agent that builds something reviews it with the builder's
+blind spots. A separate reviewer agent with an adversarial brief ("find what's
+wrong, report by severity, you fix nothing") plus a scripted sweep (links,
+artifacts, number consistency across pages) catches a different class of bug.
+Make review a standing agent, not a one-off favor.
+
+### 2026-06-10 — Parallelize agents by file ownership
+**Context:** "Fix everything all at once" — 14 findings spanning deep ingest
+logic and a dozen display fixes. One subagent took the parser/database work
+with an explicit *do-not-touch list* (my files), while the main session fixed
+templates and queries simultaneously. No conflicts; both test suites merged
+green.
+**Learning:** Two agents editing the same files is a collision; two agents
+editing disjoint files is a team. Before spawning parallel work, split by
+file ownership and write the boundary into the agent's instructions.
+
+### 2026-06-10 — Separate preparing a fix from applying it
+**Context:** The amendment-bug subagent was forbidden from writing to the
+live database. It delivered code + tests + a `repair_amendments.py` script
+with a `--dry-run` mode, and proved on read-only data that 38 quarters would
+flip correctly (naming Berkshire and MFN). The actual write ran once, in the
+main session, after review.
+**Learning:** For irreversible changes (live data, production), have the
+agent *prepare and prove* the change (dry-run output is the proof), and keep
+the single mutating step in your hands. Same shape as code review: author ≠
+applier.
+
+### 2026-06-10 — Verify deployments against the served site, not the green checkmark
+**Context:** After deploying the fixes, a background watcher followed the
+workflow and then `curl`-checked the LIVE pages (cache bypassed) for the
+exact regressions just fixed — Berkshire's $258.70B, the phantom buy gone,
+the new cache stamp.
+**Learning:** A successful pipeline run only proves the pipeline ran. Close
+the loop by asserting the served content shows the specific fixes — and make
+the checks the same list as the bugs, so "deployed" means "verified."
+
 ### 2026-06-10 — Claude can propose, but not approve, changes to its own instructions
 **Context:** Claude found a factually wrong line in CLAUDE.md ("pushing
 triggers the deploy") and edited the file — but when it tried to *commit* the

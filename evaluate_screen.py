@@ -124,6 +124,43 @@ def _is_shown(conn, cik, quarter: str) -> bool:
     return row is not None
 
 
+def _duplicate_books(conn, quarter: str, shown: list[dict]) -> list[dict]:
+    """Pairs of shown filers reporting byte-identical books.
+
+    A fund and its adviser/GP sometimes BOTH file a 13F covering the same
+    positions — two CIKs, one portfolio — which double-counts AUM, holder
+    counts and flows. Cheap detection: only filers with the same rounded AUM
+    and issuer count are candidates; their (issuer, value) sets are compared.
+    """
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for s in shown:
+        groups[(round(s["aum_usd"]), s["num_issuers"])].append(s)
+
+    def book(cik):
+        return {(h["issuer_cusip"], round(h["value_usd"] or 0)) for h in conn.execute(
+            """SELECT h.issuer_cusip, h.value_usd
+               FROM holdings h JOIN filings f ON f.id = h.filing_id
+               WHERE f.cik = ? AND f.quarter_label = ? AND f.is_current = 1""",
+            (str(cik), quarter))}
+
+    out = []
+    for rs in groups.values():
+        if len(rs) < 2:
+            continue
+        for i in range(len(rs)):
+            for j in range(i + 1, len(rs)):
+                a, b = book(rs[i]["cik"]), book(rs[j]["cik"])
+                if a and a == b:
+                    out.append({
+                        "name_a": rs[i]["name"], "cik_a": rs[i]["cik"],
+                        "name_b": rs[j]["name"], "cik_b": rs[j]["cik"],
+                        "aum_usd": rs[i]["aum_usd"],
+                        "num_issuers": rs[i]["num_issuers"],
+                    })
+    return out
+
+
 def evaluate(conn, quarter: str) -> dict:
     bench = _load_benchmark()
     shown = _shown_rows(conn, quarter)
@@ -131,6 +168,7 @@ def evaluate(conn, quarter: str) -> dict:
     excluded_types = set(classify.excluded_firm_types())
 
     total_aum = sum(s["aum_usd"] for s in shown)
+    duplicate_books = _duplicate_books(conn, quarter, shown)
 
     # Suspected false positives still inside the shown universe. Lapsed roster
     # members are knowingly kept (sticky universe) — they go to the separate
@@ -187,6 +225,7 @@ def evaluate(conn, quarter: str) -> dict:
         "shown": shown,
         "suspected_false_positives": suspected_fp,
         "lapsed_members": lapsed_members,
+        "duplicate_books": duplicate_books,
         "fp_fraction": fp_fraction,
         "benchmark": {
             "must_pass_total": len(bench["must_pass"]),
@@ -264,6 +303,20 @@ def _markdown(report: dict) -> str:
                 f"| {s['filer_type'] or '—'} | {'; '.join(s['flags'])} |")
         lines.append("")
 
+    dups = report.get("duplicate_books") or []
+    if dups:
+        lines += [
+            "## ⚠ Duplicate books — two filers, one portfolio", "",
+            "These pairs report byte-identical holdings (a fund and its "
+            "adviser/GP both filing). Each pair double-counts AUM, holder "
+            "counts and flows until one is excluded in `config/curation.yaml`.", "",
+            "| Filer A | CIK | Filer B | CIK | AUM | Names |", "|---|---|---|---|---|---|"]
+        for d in dups:
+            lines.append(
+                f"| {d['name_a']} | {d['cik_a']} | {d['name_b']} | {d['cik_b']} "
+                f"| {_b(d['aum_usd'])} | {d['num_issuers']} |")
+        lines.append("")
+
     lapsed = report.get("lapsed_members") or []
     if lapsed:
         lines += [
@@ -326,6 +379,9 @@ def main() -> None:
           f"({report['fp_fraction'] * 100:.1f}% of shown)")
     print(f"  lapsed members:        {len(report.get('lapsed_members') or [])} "
           f"(kept by default — see report for review)")
+    if report.get("duplicate_books"):
+        print(f"  ⚠ duplicate books:     {len(report['duplicate_books'])} pair(s) "
+              f"— two filers reporting one portfolio (see report)")
     print(f"  criteria: {sum(c.values())}/4 mechanical passed → "
           f"{'ACCEPTED' if report['accepted'] else 'NOT YET'}")
     print(f"  report: {AUDIT_DIR / 'screen_audit.md'}")
