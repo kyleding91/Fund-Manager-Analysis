@@ -1,28 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Most-held stocks — {{ site_name }} ({{ quarter }}){% endblock %}
+{% block title %}{{ t('stocks.title', site=site_name, q=quarter) }}{% endblock %}
 {% block content %}
 
 <section class="hero" style="padding:40px 0 20px;">
-  <div class="eyebrow">Conviction · {{ quarter }}</div>
-  <h1>Most-held stocks</h1>
-  <p class="lede">The companies owned by the most universe members this quarter. A stock held by many
-  concentrated, value-oriented investors is a strong conviction signal. ETF and index-fund positions
-  are excluded — they're parked cash, not stock-picking.</p>
+  <div class="eyebrow">{{ t('stocks.eyebrow') }} · {{ quarter }}</div>
+  <h1>{{ t('stocks.h1') }}</h1>
+  <p class="lede">{{ t('stocks.lede') }}</p>
 </section>
 
 <div class="toolbar">
-  <input type="search" id="fund-search" placeholder="Search company…" aria-label="Search stocks">
+  <input type="search" id="fund-search" placeholder="{{ t('stocks.search') }}" aria-label="{{ t('stocks.search_aria') }}">
 </div>
-<p class="count-note"><span id="row-count">0</span> shown</p>
+<p class="count-note"><span id="row-count">0</span> {{ t('dir.shown') }}</p>
 
 <div class="table-wrap">
   <table class="data" id="funds-table">
     <thead>
       <tr>
-        <th data-sort="text" data-key="name">Company <span class="arrow">▾</span></th>
-        <th data-sort="num" data-key="funds" class="num sorted-desc"># Managers holding <span class="arrow">▾</span></th>
-        <th data-sort="num" data-key="value" class="num">Combined value <span class="arrow">▾</span></th>
-        <th data-sort="num" data-key="pct" class="num">Avg % of portfolio <span class="arrow">▾</span></th>
+        <th data-sort="text" data-key="name">{{ t('stocks.th.company') }} <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="funds" class="num sorted-desc">{{ t('stocks.th.nmgrs') }} <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="value" class="num">{{ t('stocks.th.value') }} <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="pct" class="num">{{ t('stocks.th.avgpct') }} <span class="arrow">▾</span></th>
       </tr>
     </thead>
     <tbody>
@@ -39,5 +37,5 @@
   </table>
 </div>
 
-<script src="{{ root }}assets/app.js"></script>
+<script src="{{ asset_root }}assets/app.js"></script>
 {% endblock %}

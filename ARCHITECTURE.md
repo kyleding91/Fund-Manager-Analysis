@@ -149,6 +149,7 @@ Fund Manager Analysis/
 │   ├── insights.py      # quarter-over-quarter, most-held, concentration
 │   ├── classify.py      # firm-type heuristic + per-CIK overrides + excluded set
 │   ├── site_data.py     # shape DB rows into the dict the website templates expect
+│   ├── i18n.py          # ALL site UI strings, en/zh side by side (zh = default language)
 │   └── quality.py       # automated data-quality / invariant checks
 │
 ├── make_icons.py        # regenerate the PWA / home-screen app icons (Pillow)

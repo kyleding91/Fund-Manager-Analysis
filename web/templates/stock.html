@@ -1,31 +1,31 @@
 {% extends "base.html" %}
-{% block title %}{{ s.issuer }} — 13F holders ({{ s.quarter }}){% endblock %}
-{% block description %}Which screened, concentrated managers hold {{ s.issuer }}, how each position changed quarter-over-quarter, and the combined position size over the last {{ s.trend|length }} quarters — from SEC EDGAR 13F filings.{% endblock %}
+{% block title %}{{ t('stock.title', issuer=s.issuer, q=s.quarter) }}{% endblock %}
+{% block description %}{{ t('stock.meta', issuer=s.issuer, n=s.trend|length) }}{% endblock %}
 {% block content %}
 
-<a class="backlink" href="{{ root }}stocks.html">&larr; Most-held stocks</a>
+<a class="backlink" href="{{ root }}stocks.html">{{ t('stock.back')|safe }}</a>
 <div class="fund-head">
   <h1>{{ s.issuer }}</h1>
   {% if s.num_holders %}
-  <span class="badge">Held by {{ s.num_holders }} of {{ s.universe }} managers</span>
+  <span class="badge">{{ t('stock.held_by', n=s.num_holders, total=s.universe) }}</span>
   {% else %}
-  <span class="badge gray">Fully exited{% if s.prev_quarter %} in {{ s.quarter }}{% endif %}</span>
+  <span class="badge gray">{{ t('stock.exited_badge', q=s.quarter) }}</span>
   {% endif %}
 </div>
 {% if s.num_holders %}
-<p class="lede">Combined disclosed 13F position of <strong>{{ s.total_value }}</strong> ({{ s.total_shares }} shares) across the screened universe in {{ s.quarter }}.</p>
+<p class="lede">{{ t('stock.lede', value=s.total_value, shares=s.total_shares, q=s.quarter)|safe }}</p>
 {% else %}
-<p class="lede">No universe member holds {{ s.issuer }} as of {{ s.quarter }} — every position was sold{% if s.prev_quarter %} since {{ s.prev_quarter }}{% endif %}. The exit is the story on this page.</p>
+<p class="lede">{{ t('stock.lede_exited', issuer=s.issuer, q=s.quarter, prev=s.prev_quarter or '—') }}</p>
 {% endif %}
 
 <section class="section">
-  <h2>Combined position over time</h2>
-  <p class="section-sub">Total disclosed 13F value, total shares held, and the number of screened managers holding {{ s.issuer }}, over the last {{ s.trend|length }} quarters. Shares are the cleanest accumulation signal — value also moves with the stock price.</p>
+  <h2>{{ t('stock.trend.h2') }}</h2>
+  <p class="section-sub">{{ t('stock.trend.sub', issuer=s.issuer, n=s.trend|length) }}</p>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
     {% if s.value_svg %}
     <div class="card spark">
-      <div class="section-sub" style="margin:0 0 6px;">Combined value</div>
-      <svg viewBox="0 0 {{ s.value_svg.width }} {{ s.value_svg.height }}" width="{{ s.value_svg.width }}" height="{{ s.value_svg.height }}" role="img" aria-label="Combined value over time">
+      <div class="section-sub" style="margin:0 0 6px;">{{ t('stock.card.value') }}</div>
+      <svg viewBox="0 0 {{ s.value_svg.width }} {{ s.value_svg.height }}" width="{{ s.value_svg.width }}" height="{{ s.value_svg.height }}" role="img" aria-label="{{ t('stock.aria.value') }}">
         <polyline class="line" points="{{ s.value_svg.polyline }}"></polyline>
         {% for d in s.value_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }}</title></circle>{% endfor %}
         <text class="axislab" x="{{ s.value_svg.dots[0].x }}" y="{{ s.value_svg.height - 6 }}">{{ s.value_svg.first_label }}</text>
@@ -33,82 +33,82 @@
       </svg>
     </div>
     <div class="card spark">
-      <div class="section-sub" style="margin:0 0 6px;">Total shares held</div>
-      <svg viewBox="0 0 {{ s.shares_svg.width }} {{ s.shares_svg.height }}" width="{{ s.shares_svg.width }}" height="{{ s.shares_svg.height }}" role="img" aria-label="Total shares held over time">
+      <div class="section-sub" style="margin:0 0 6px;">{{ t('stock.card.shares') }}</div>
+      <svg viewBox="0 0 {{ s.shares_svg.width }} {{ s.shares_svg.height }}" width="{{ s.shares_svg.width }}" height="{{ s.shares_svg.height }}" role="img" aria-label="{{ t('stock.aria.shares') }}">
         <polyline class="line" points="{{ s.shares_svg.polyline }}"></polyline>
-        {% for d in s.shares_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }} shares</title></circle>{% endfor %}
+        {% for d in s.shares_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ t('stock.tip.shares', label=d.label, value=d.value) }}</title></circle>{% endfor %}
         <text class="axislab" x="{{ s.shares_svg.dots[0].x }}" y="{{ s.shares_svg.height - 6 }}">{{ s.shares_svg.first_label }}</text>
         <text class="axislab" x="{{ s.shares_svg.width - 8 }}" y="{{ s.shares_svg.height - 6 }}" text-anchor="end">{{ s.shares_svg.last_label }}</text>
       </svg>
     </div>
     <div class="card spark">
-      <div class="section-sub" style="margin:0 0 6px;">Managers holding</div>
-      <svg viewBox="0 0 {{ s.holders_svg.width }} {{ s.holders_svg.height }}" width="{{ s.holders_svg.width }}" height="{{ s.holders_svg.height }}" role="img" aria-label="Number of managers holding over time">
+      <div class="section-sub" style="margin:0 0 6px;">{{ t('stock.card.holders') }}</div>
+      <svg viewBox="0 0 {{ s.holders_svg.width }} {{ s.holders_svg.height }}" width="{{ s.holders_svg.width }}" height="{{ s.holders_svg.height }}" role="img" aria-label="{{ t('stock.aria.holders') }}">
         <polyline class="line" points="{{ s.holders_svg.polyline }}"></polyline>
-        {% for d in s.holders_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }} manager{{ '' if d.value == '1' else 's' }}</title></circle>{% endfor %}
+        {% for d in s.holders_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ t('stock.tip.holders_one' if d.value == '1' else 'stock.tip.holders', label=d.label, value=d.value) }}</title></circle>{% endfor %}
         <text class="axislab" x="{{ s.holders_svg.dots[0].x }}" y="{{ s.holders_svg.height - 6 }}">{{ s.holders_svg.first_label }}</text>
         <text class="axislab" x="{{ s.holders_svg.width - 8 }}" y="{{ s.holders_svg.height - 6 }}" text-anchor="end">{{ s.holders_svg.last_label }}</text>
       </svg>
     </div>
     {% else %}
-    <p class="muted">Not enough quarters on record yet to chart a trend.</p>
+    <p class="muted">{{ t('stock.trend.short') }}</p>
     {% endif %}
   </div>
 </section>
 
 <section class="section">
-  <h2>What changed{% if s.prev_quarter %} since {{ s.prev_quarter }}{% endif %}</h2>
+  <h2>{% if s.prev_quarter %}{{ t('stock.changed.h2', prev=s.prev_quarter) }}{% else %}{{ t('stock.changed.h2_noprev') }}{% endif %}</h2>
   {% if s.prev_quarter %}
   <div class="kpis" style="margin-bottom:18px;">
     {% for c in s.counts %}
-    <div class="kpi"><div class="label"><span aria-hidden="true">{{ c.emoji }}</span> {{ c.kind|capitalize }}</div><div class="value">{{ c.n }}</div></div>
+    <div class="kpi"><div class="label"><span aria-hidden="true">{{ c.emoji }}</span> {{ t('chg.' + c.kind) }}</div><div class="value">{{ c.n }}</div></div>
     {% endfor %}
   </div>
   {% if s.new_buyers or s.exits %}
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
     <div class="card">
-      <h3 class="qsub" style="margin-top:0;">New buyers</h3>
+      <h3 class="qsub" style="margin-top:0;">{{ t('stock.buyers.h3') }}</h3>
       {% if s.new_buyers %}
       <ul class="plain-list">
         {% for h in s.new_buyers %}
         <li><a href="{{ root }}funds/{{ h.cik }}.html">{{ h.name }}</a> <span class="muted">{{ h.value }}</span></li>
         {% endfor %}
       </ul>
-      {% else %}<p class="muted">No new buyers this quarter.</p>{% endif %}
+      {% else %}<p class="muted">{{ t('stock.buyers.none') }}</p>{% endif %}
     </div>
     <div class="card">
-      <h3 class="qsub" style="margin-top:0;">Exited</h3>
+      <h3 class="qsub" style="margin-top:0;">{{ t('stock.exits.h3') }}</h3>
       {% if s.exits %}
       <ul class="plain-list">
         {% for e in s.exits %}
-        <li><a href="{{ root }}funds/{{ e.cik }}.html">{{ e.name }}</a> <span class="muted">was {{ e.was }}</span></li>
+        <li><a href="{{ root }}funds/{{ e.cik }}.html">{{ e.name }}</a> <span class="muted">{{ t('stock.was', value=e.was) }}</span></li>
         {% endfor %}
       </ul>
-      {% else %}<p class="muted">No managers fully exited this quarter.</p>{% endif %}
+      {% else %}<p class="muted">{{ t('stock.exits.none') }}</p>{% endif %}
     </div>
   </div>
   {% endif %}
   {% else %}
-  <p class="callout">This is the earliest quarter on record, so there's no prior filing to compare against yet.</p>
+  <p class="callout">{{ t('stock.earliest') }}</p>
   {% endif %}
 </section>
 
 <section class="section">
-  <h2>Current holders &mdash; {{ s.quarter }}</h2>
+  <h2>{{ t('stock.holders.h2', q=s.quarter)|safe }}</h2>
   {% if not s.holders %}
-  <p class="muted">None — every member that held {{ s.issuer }} has sold out. The sellers are listed under "Exited" above.</p>
+  <p class="muted">{{ t('stock.holders.none', issuer=s.issuer) }}</p>
   {% else %}
-  <p class="section-sub">Every screened manager holding {{ s.issuer }}, largest position first. Change vs {{ s.prev_quarter or 'the prior quarter' }} is by share count — what the manager actually bought or sold.</p>
+  <p class="section-sub">{{ t('stock.holders.sub', issuer=s.issuer, prev=s.prev_quarter or t('fund.moves.prior')) }}</p>
   <div class="table-wrap">
     <table class="data" id="holders-table">
       <thead>
         <tr>
-          <th data-sort="text" data-key="name">Manager <span class="arrow">▾</span></th>
-          <th data-sort="num" data-key="value" class="num sorted-desc">Position value <span class="arrow">▾</span></th>
-          <th data-sort="num" data-key="pct" class="num">% of their portfolio <span class="arrow">▾</span></th>
-          <th class="no-sort num">Shares</th>
-          <th class="no-sort">Change</th>
-          <th data-sort="num" data-key="delta" class="num">&Delta; Value</th>
+          <th data-sort="text" data-key="name">{{ t('stock.th.manager') }} <span class="arrow">▾</span></th>
+          <th data-sort="num" data-key="value" class="num sorted-desc">{{ t('stock.th.value') }} <span class="arrow">▾</span></th>
+          <th data-sort="num" data-key="pct" class="num">{{ t('stock.th.pct') }} <span class="arrow">▾</span></th>
+          <th class="no-sort num">{{ t('stock.th.shares') }}</th>
+          <th class="no-sort">{{ t('stock.th.change') }}</th>
+          <th data-sort="num" data-key="delta" class="num">{{ t('stock.th.delta')|safe }} <span class="arrow">▾</span></th>
         </tr>
       </thead>
       <tbody>
@@ -118,7 +118,7 @@
           <td class="num">{{ h.value }}</td>
           <td class="num">{{ h.pct }}</td>
           <td class="num">{{ h.shares }}</td>
-          <td>{% if h.change_type != 'unchanged' %}<span class="chg chg-{{ h.change_type }}"><span aria-hidden="true">{{ h.emoji }}</span> {{ h.change_type|capitalize }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if h.change_type != 'unchanged' %}<span class="chg chg-{{ h.change_type }}"><span aria-hidden="true">{{ h.emoji }}</span> {{ t('chg.' + h.change_type) }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
           <td class="num {{ 'delta-pos' if h.delta_val > 0 else 'delta-neg' if h.delta_val < 0 }}">{{ h.delta }}</td>
         </tr>
         {% endfor %}
@@ -126,8 +126,8 @@
     </table>
   </div>
   {% endif %}
-  <p class="section-sub" style="margin-top:14px;">13F discloses long U.S.-listed positions only, reported with up to a 45-day lag. See the <a href="{{ root }}methodology.html">methodology</a> for details.</p>
+  <p class="section-sub" style="margin-top:14px;">{{ t('stock.footnote', root=root)|safe }}</p>
 </section>
 
-<script src="{{ root }}assets/app.js"></script>
+<script src="{{ asset_root }}assets/app.js"></script>
 {% endblock %}

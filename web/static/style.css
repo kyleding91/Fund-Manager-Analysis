@@ -223,3 +223,7 @@ h3.qsub { font-family: var(--serif); font-size: 20px; margin: 30px 0 6px; letter
   .barrow { grid-template-columns: 96px 1fr auto; font-size: 13px; }
   .histogram { gap: 5px; }
 }
+
+/* Language switcher (Chinese default; /en/ mirror) */
+.nav a.lang-switch { border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 3px 12px; font-size: 13px; }
+.nav a.lang-switch:hover { border-color: var(--emerald); }

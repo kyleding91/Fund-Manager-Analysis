@@ -1,92 +1,57 @@
 {% extends "base.html" %}
-{% block title %}Methodology — {{ site_name }}{% endblock %}
+{% block title %}{{ t('method.title', site=site_name) }}{% endblock %}
 {% block content %}
 
 <section class="hero" style="padding:40px 0 20px;">
-  <div class="eyebrow">About the data</div>
-  <h1>Methodology</h1>
-  <p class="lede">How this screen is built, what it includes, and the limitations you should keep in mind.</p>
+  <div class="eyebrow">{{ t('method.eyebrow') }}</div>
+  <h1>{{ t('method.h1') }}</h1>
+  <p class="lede">{{ t('method.lede') }}</p>
 </section>
 
 <div class="prose">
-  <h2>The screen</h2>
-  <p>Every quarter we read all Form 13F filings from SEC EDGAR and keep only institutions that are
-  large <em>and</em> concentrated, to isolate high-conviction, value-oriented managers. A filing
-  qualifies when it has:</p>
+  <h2>{{ t('method.screen.h2') }}</h2>
+  <p>{{ t('method.screen.intro')|safe }}</p>
   <ul>
-    <li><strong>More than ${{ criteria.min_aum_b }}&nbsp;billion</strong> in disclosed 13F assets, <strong>and</strong></li>
-    <li>at least <strong>{{ criteria.min_holdings }} distinct companies</strong> (so single- and double-stock
-    vehicles — operating companies reporting one strategic stake — are excluded), <strong>and</strong></li>
-    <li>less than <strong>{{ criteria.max_etf_pct }}% of assets in ETFs or index funds</strong> (a mostly-ETF
-    book is a passive basket, not a stock-picker), <strong>and</strong></li>
-    <li>is concentrated by <strong>either</strong> measure:
+    <li>{{ t('method.screen.b1', min_aum_b=criteria.min_aum_b)|safe }}</li>
+    <li>{{ t('method.screen.b2', min_holdings=criteria.min_holdings)|safe }}</li>
+    <li>{{ t('method.screen.b3', max_etf_pct=criteria.max_etf_pct)|safe }}</li>
+    <li>{{ t('method.screen.b4')|safe }}
       <ul>
-        <li><strong>{{ criteria.max_holdings }} or fewer distinct companies</strong> held, <strong>or</strong></li>
-        <li>its <strong>top {{ criteria.top_n }} positions make up at least {{ criteria.top_n_min_pct }}%</strong> of disclosed AUM, while still holding <strong>{{ criteria.max_holdings_weighted }} or fewer distinct companies</strong>.</li>
+        <li>{{ t('method.screen.b4a', max_holdings=criteria.max_holdings)|safe }}</li>
+        <li>{{ t('method.screen.b4b', top_n=criteria.top_n, top_n_min_pct=criteria.top_n_min_pct, max_holdings_weighted=criteria.max_holdings_weighted)|safe }}</li>
       </ul>
     </li>
   </ul>
-  <div class="callout">A large book paired with either a short holdings list or a heavy top-10
-  weighting is the signature of a manager who concentrates capital in their best ideas, rather than
-  indexing broadly. The second test catches managers who carry a modest tail of small positions but
-  still run a genuinely concentrated portfolio — while the {{ criteria.max_holdings_weighted }}-company
-  cap on that test keeps out broad mutual-fund complexes that merely happen to be top-heavy.</div>
+  <div class="callout">{{ t('method.screen.callout', max_holdings_weighted=criteria.max_holdings_weighted)|safe }}</div>
 
-  <h2>Membership is sticky</h2>
-  <p>The criteria above are an <strong>admission test</strong>, not a quarterly eviction rule.
-  A manager that qualifies joins the universe and <strong>stays by default</strong> — a great
-  manager having a soft quarter (assets dipping under the floor, or drifting a few names past the
-  concentration line) shouldn't vanish from the record. Members that no longer meet the criteria
-  are marked as <em>lapsed</em> on the <a href="moves.html">This quarter</a> page, with the reason,
-  and are only removed by an explicit editorial decision — every such decision is recorded
-  publicly in the project's history. This means the universe count can exceed the number of
-  filers currently passing the screen.</p>
+  <h2>{{ t('method.sticky.h2') }}</h2>
+  <p>{{ t('method.sticky.p')|safe }}</p>
 
-  <h2>Manager deep-dives keep full history</h2>
-  <p>Whether a manager qualifies can change from quarter to quarter — a book can drift just over or
-  under the holdings line. Once a manager qualifies in <em>any</em> of the recent quarters we track,
-  we keep its filings for <em>all</em> of those quarters so each deep-dive shows a continuous timeline
-  and accurate quarter-over-quarter moves. Quarters where the manager didn't meet the criteria are
-  clearly marked (with a ○) and are excluded from that quarter's screened universe and rankings.</p>
+  <h2>{{ t('method.history.h2') }}</h2>
+  <p>{{ t('method.history.p')|safe }}</p>
 
-  <h2>Filer types</h2>
-  <p>13F filings come from many kinds of institutions, not just stock-pickers. We label each filer by
-  type and <strong>exclude the kinds that aren't fundamental, concentrated fund managers</strong>:
-  market-makers / trading desks, operating and holding companies (corporations reporting strategic
-  stakes), sovereign wealth funds, central banks and pensions, and banks / insurers.
-  <strong>Private-equity / venture firms and foundations / endowments are kept</strong>, since some run
-  genuinely concentrated equity books. Types come from a transparent name heuristic with
-  <em>per-filer overrides</em> for the cases a name can't settle (and to protect real managers whose
-  name looks like an operating company). The heuristic is approximate; corrections are welcome.</p>
+  <h2>{{ t('method.types.h2') }}</h2>
+  <p>{{ t('method.types.p')|safe }}</p>
 
-  <h2>How figures are computed</h2>
+  <h2>{{ t('method.calc.h2') }}</h2>
   <ul>
-    <li><strong>AUM</strong> is the sum of a filer's disclosed long positions. Filings that report values
-    in thousands (before 2023) are normalized to whole dollars.</li>
-    <li><strong>Holdings</strong> are aggregated by company (the first six CUSIP digits), so multiple share
-    classes or shared-discretion rows collapse into one position.</li>
-    <li><strong>Quarter-over-quarter moves</strong> compare share counts against the manager's previous
-    screened quarter, classifying each position as new, added, trimmed, or exited.</li>
-    <li><strong>Amended filings</strong> (13F-HR/A): a <em>restatement</em> amendment supersedes the
-    original for that period, but a partial &ldquo;new holdings&rdquo; amendment (one that only adds a
-    few positions) does not displace the original filing.</li>
+    <li>{{ t('method.calc.b1')|safe }}</li>
+    <li>{{ t('method.calc.b2')|safe }}</li>
+    <li>{{ t('method.calc.b3')|safe }}</li>
+    <li>{{ t('method.calc.b4')|safe }}</li>
   </ul>
 
-  <h2>Update cadence</h2>
-  <p>13F filings are due 45 days after each quarter-end. Shortly after each deadline
-  (mid-February, May, August, and November) the site automatically ingests the new quarter and rebuilds.</p>
+  <h2>{{ t('method.cadence.h2') }}</h2>
+  <p>{{ t('method.cadence.p') }}</p>
 
-  <h2>Limitations</h2>
+  <h2>{{ t('method.limits.h2') }}</h2>
   <ul>
-    <li>13F discloses <strong>long U.S.-listed positions only</strong> — no short positions, cash, non-U.S.
-    listings, or most derivatives.</li>
-    <li>Data is reported with up to a <strong>45-day lag</strong>, so it is not real-time.</li>
-    <li>Managers may obtain <strong>confidential treatment</strong> to omit holdings; such filings are
-    excluded from the screen rather than counted as concentrated.</li>
-    <li>Figures are parsed from public filings and may contain errors.</li>
+    <li>{{ t('method.limits.b1')|safe }}</li>
+    <li>{{ t('method.limits.b2')|safe }}</li>
+    <li>{{ t('method.limits.b3')|safe }}</li>
+    <li>{{ t('method.limits.b4')|safe }}</li>
   </ul>
 
-  <div class="callout"><strong>Not investment advice.</strong> This site is for informational and
-  educational purposes only. Always do your own research.</div>
+  <div class="callout">{{ t('method.advice')|safe }}</div>
 </div>
 {% endblock %}

@@ -1,29 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Managers — {{ site_name }} ({{ quarter }}){% endblock %}
+{% block title %}{{ t('dir.title', site=site_name, q=quarter) }}{% endblock %}
 {% block content %}
 
 <section class="hero" style="padding:40px 0 20px;">
-  <div class="eyebrow">Directory · {{ quarter }}</div>
-  <h1>Universe members</h1>
-  <p class="lede">Every member of the screened universe — managers join by passing the screen and stay
-  until reviewed out, so a few currently sit below the criteria (their pages say so). Search and sort;
-  click any name for its full portfolio and quarter-over-quarter moves.</p>
+  <div class="eyebrow">{{ t('dir.eyebrow') }} · {{ quarter }}</div>
+  <h1>{{ t('dir.h1') }}</h1>
+  <p class="lede">{{ t('dir.lede') }}</p>
 </section>
 
 <div class="toolbar">
-  <input type="search" id="fund-search" placeholder="Search manager name…" aria-label="Search managers">
+  <input type="search" id="fund-search" placeholder="{{ t('dir.search') }}" aria-label="{{ t('dir.search_aria') }}">
 </div>
-<p class="count-note"><span id="row-count">0</span> shown · <a href="{{ root }}data/managers-{{ quarter_slug }}.csv">Download CSV</a></p>
+<p class="count-note"><span id="row-count">0</span> {{ t('dir.shown') }} · <a href="{{ asset_root }}data/managers-{{ quarter_slug }}.csv">{{ t('dir.csv') }}</a></p>
 
 <div class="table-wrap">
   <table class="data" id="funds-table">
     <thead>
       <tr>
-        <th data-sort="text" data-key="name">Manager <span class="arrow">▾</span></th>
-        <th data-sort="num" data-key="aum" class="num sorted-desc">AUM <span class="arrow">▾</span></th>
-        <th data-sort="num" data-key="iss" class="num"># Holdings <span class="arrow">▾</span></th>
-        <th data-sort="num" data-key="pos" class="num"># Positions <span class="arrow">▾</span></th>
-        <th data-sort="text" data-key="filed" class="num">Filed <span class="arrow">▾</span></th>
+        <th data-sort="text" data-key="name">{{ t('dir.th.manager') }} <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="aum" class="num sorted-desc">{{ t('dir.th.aum') }} <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="iss" class="num">{{ t('dir.th.holdings') }} <span class="arrow">▾</span></th>
+        <th data-sort="num" data-key="pos" class="num">{{ t('dir.th.positions') }} <span class="arrow">▾</span></th>
+        <th data-sort="text" data-key="filed" class="num">{{ t('dir.th.filed') }} <span class="arrow">▾</span></th>
       </tr>
     </thead>
     <tbody>
@@ -42,5 +40,5 @@
   </table>
 </div>
 
-<script src="{{ root }}assets/app.js"></script>
+<script src="{{ asset_root }}assets/app.js"></script>
 {% endblock %}

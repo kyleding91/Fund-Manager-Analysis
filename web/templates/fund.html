@@ -1,19 +1,19 @@
 {% extends "base.html" %}
-{% block title %}{{ f.manager_name }} — 13F holdings{% endblock %}
-{% block description %}{{ f.manager_name }} 13F holdings and quarter-over-quarter moves across the last {{ f.quarters|length }} reported quarters, built from SEC EDGAR filings.{% endblock %}
+{% block title %}{{ t('fund.title', name=f.manager_name) }}{% endblock %}
+{% block description %}{{ t('fund.meta', name=f.manager_name, n=f.quarters|length) }}{% endblock %}
 {% block content %}
 
-<a class="backlink" href="{{ root }}funds.html">&larr; All managers</a>
+<a class="backlink" href="{{ root }}funds.html">{{ t('fund.back')|safe }}</a>
 <div class="fund-head">
   <h1>{{ f.manager_name }}</h1>
 </div>
 
 {% if f.aum_svg %}
 <section class="section">
-  <h2>Assets under management over time</h2>
-  <p class="section-sub">Disclosed 13F assets for every quarter on record ({{ f.num_quarters_total }}) — including quarters where the manager didn't meet the screen.</p>
+  <h2>{{ t('fund.aum.h2') }}</h2>
+  <p class="section-sub">{{ t('fund.aum.sub', n=f.num_quarters_total) }}</p>
   <div class="card spark">
-    <svg viewBox="0 0 {{ f.aum_svg.width }} {{ f.aum_svg.height }}" width="{{ f.aum_svg.width }}" height="{{ f.aum_svg.height }}" role="img" aria-label="AUM over time">
+    <svg viewBox="0 0 {{ f.aum_svg.width }} {{ f.aum_svg.height }}" width="{{ f.aum_svg.width }}" height="{{ f.aum_svg.height }}" role="img" aria-label="{{ t('fund.aum.aria') }}">
       <polyline class="line" points="{{ f.aum_svg.polyline }}"></polyline>
       {% for d in f.aum_svg.dots %}<circle class="dot" cx="{{ d.x }}" cy="{{ d.y }}" r="3.5"><title>{{ d.label }}: {{ d.value }}</title></circle>{% endfor %}
       <text class="axislab" x="{{ f.aum_svg.dots[0].x }}" y="{{ f.aum_svg.height - 6 }}">{{ f.aum_svg.first_label }}</text>
@@ -24,42 +24,43 @@
 {% endif %}
 
 <section class="section" id="quarter-view">
-  <h2>Portfolio by quarter</h2>
-  <p class="section-sub">Pick a quarter to see that filing's holdings and what changed since the quarter before.</p>
+  <h2>{{ t('fund.byq.h2') }}</h2>
+  <p class="section-sub">{{ t('fund.byq.sub') }}</p>
   {% if f.quarters|length > 1 %}
   <div class="chips qselect" id="quarter-chips">
     {% for q in f.quarters %}
-    <button type="button" class="chip {{ 'on' if loop.first }}{{ ' off-screen' if not q.meets_criteria }}" data-q="{{ q.slug }}"{% if not q.meets_criteria %} title="Shown for history — did not meet the selection criteria this quarter"{% endif %}>{{ q.quarter }}{% if not q.meets_criteria %} <span class="dot-off">○</span>{% endif %}</button>
+    <button type="button" class="chip {{ 'on' if loop.first }}{{ ' off-screen' if not q.meets_criteria }}" data-q="{{ q.slug }}"{% if not q.meets_criteria %} title="{{ t('fund.off_chip_title') }}"{% endif %}>{{ q.quarter }}{% if not q.meets_criteria %} <span class="dot-off">○</span>{% endif %}</button>
     {% endfor %}
   </div>
-  <p class="section-sub">○ marks quarters shown for history where the manager didn't meet the selection criteria ({{ criteria.min_aum_b }}B+ AUM and either &le;{{ criteria.max_holdings }} issuers or top {{ criteria.top_n }} &ge; {{ criteria.top_n_min_pct }}% of AUM with &le;{{ criteria.max_holdings_weighted }} issuers).</p>
+  <p class="section-sub">{{ t('fund.byq.offnote', min_aum_b=criteria.min_aum_b, max_holdings=criteria.max_holdings, top_n=criteria.top_n, top_n_min_pct=criteria.top_n_min_pct, max_holdings_weighted=criteria.max_holdings_weighted)|safe }}</p>
   {% endif %}
 
   {% for q in f.quarters %}
   <div class="qpanel" data-q="{{ q.slug }}"{% if not loop.first %} hidden{% endif %}>
 
     <div class="statline">
-      <div class="s"><div class="label">13F AUM</div><div class="value">{{ q.aum }}</div></div>
-      <div class="s"><div class="label">Companies</div><div class="value">{{ q.num_issuers }}</div></div>
-      <div class="s"><div class="label">Positions</div><div class="value">{{ q.num_positions }}</div></div>
-      <div class="s"><div class="label">Top {{ criteria.top_n }} weight</div><div class="value">{{ q.top_n_pct }}</div></div>
-      <div class="s"><div class="label">Filed</div><div class="value" style="font-size:18px;">{{ q.date_filed }} · {{ q.form_type }}</div></div>
+      <div class="s"><div class="label">{{ t('fund.stat.aum') }}</div><div class="value">{{ q.aum }}</div></div>
+      <div class="s"><div class="label">{{ t('fund.stat.companies') }}</div><div class="value">{{ q.num_issuers }}</div></div>
+      <div class="s"><div class="label">{{ t('fund.stat.positions') }}</div><div class="value">{{ q.num_positions }}</div></div>
+      <div class="s"><div class="label">{{ t('fund.stat.topn', n=criteria.top_n) }}</div><div class="value">{{ q.top_n_pct }}</div></div>
+      <div class="s"><div class="label">{{ t('fund.stat.filed') }}</div><div class="value" style="font-size:18px;">{{ q.date_filed }} · {{ q.form_type }}</div></div>
     </div>
 
     {% if not q.meets_criteria %}
+    {% set reason_txt = (' (' + t('lapse.' + q.lapse_key) + ')') if q.lapse_key else '' %}
     {% if f.is_member %}
-    <p class="callout">This filing didn't meet the screen's criteria in {{ q.quarter }}{% if q.lapse_reason %} ({{ q.lapse_reason }}){% endif %} — but as a member of the universe roster, the manager stays listed by default pending review (see the <a href="{{ root }}methodology.html">methodology</a>).</p>
+    <p class="callout">{{ t('fund.callout.member', q=q.quarter, reason=reason_txt, root=root)|safe }}</p>
     {% else %}
-    <p class="callout">Shown for history. This filing didn't meet the selection criteria in {{ q.quarter }}{% if q.lapse_reason %} ({{ q.lapse_reason }}){% endif %}, so the manager isn't part of the screened universe — its filings are kept so the timeline and quarter-over-quarter moves stay continuous.</p>
+    <p class="callout">{{ t('fund.callout.history', q=q.quarter, reason=reason_txt) }}</p>
     {% endif %}
     {% endif %}
 
-    <h3 class="qsub">Holdings &mdash; {{ q.quarter }}</h3>
-    <p class="section-sub">{{ q.num_positions }} reported positions, largest first.{% if q.sec_url %}
-      &nbsp;·&nbsp;<a href="{{ q.sec_url }}" target="_blank" rel="noopener">View original {{ q.form_type }} filing on SEC EDGAR&nbsp;↗</a>{% endif %}</p>
+    <h3 class="qsub">{{ t('fund.holdings.h3', q=q.quarter)|safe }}</h3>
+    <p class="section-sub">{{ t('fund.holdings.sub', n=q.num_positions) }}{% if q.sec_url %}
+      &nbsp;·&nbsp;<a href="{{ q.sec_url }}" target="_blank" rel="noopener">{{ t('fund.holdings.sec', form=q.form_type)|safe }}</a>{% endif %}</p>
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th class="no-sort">Company</th><th class="no-sort">% of portfolio</th><th class="no-sort num">Value</th><th class="no-sort num">Shares</th><th class="no-sort">Class</th></tr></thead>
+        <thead><tr><th class="no-sort">{{ t('fund.th.company') }}</th><th class="no-sort">{{ t('fund.th.pct') }}</th><th class="no-sort num">{{ t('fund.th.value') }}</th><th class="no-sort num">{{ t('fund.th.shares') }}</th><th class="no-sort">{{ t('fund.th.class') }}</th></tr></thead>
         <tbody>
           {% for h in q.holdings %}
           <tr>
@@ -76,23 +77,23 @@
       </table>
     </div>
 
-    <h3 class="qsub">Quarter-over-quarter moves &mdash; {{ q.quarter }}</h3>
+    <h3 class="qsub">{{ t('fund.moves.h3', q=q.quarter)|safe }}</h3>
     {% if q.moves %}
-    <p class="section-sub">Changes in share count versus {{ q.prev_quarter or 'the prior filing' }} — what the manager actually bought or sold.</p>
+    <p class="section-sub">{{ t('fund.moves.sub', prev=q.prev_quarter or t('fund.moves.prior')) }}</p>
     <div class="kpis" style="margin-bottom:18px;">
       {% for c in q.moves.counts %}
-      <div class="kpi"><div class="label"><span aria-hidden="true">{{ c.emoji }}</span> {{ c.kind|capitalize }}</div><div class="value">{{ c.n }}</div></div>
+      <div class="kpi"><div class="label"><span aria-hidden="true">{{ c.emoji }}</span> {{ t('chg.' + c.kind) }}</div><div class="value">{{ c.n }}</div></div>
       {% endfor %}
     </div>
     {% if q.moves.rows %}
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th class="no-sort">Company</th><th class="no-sort">Change</th><th class="no-sort num">Value now</th><th class="no-sort num">Value before</th><th class="no-sort num">&Delta; Value</th></tr></thead>
+        <thead><tr><th class="no-sort">{{ t('fund.th.company') }}</th><th class="no-sort">{{ t('fund.th.change') }}</th><th class="no-sort num">{{ t('fund.th.now') }}</th><th class="no-sort num">{{ t('fund.th.before') }}</th><th class="no-sort num">{{ t('fund.th.delta')|safe }}</th></tr></thead>
         <tbody>
           {% for m in q.moves.rows %}
           <tr>
             <td>{{ m.issuer }}</td>
-            <td><span class="chg chg-{{ m.change_type }}"><span aria-hidden="true">{{ m.emoji }}</span> {{ m.change_type|capitalize }}</span></td>
+            <td><span class="chg chg-{{ m.change_type }}"><span aria-hidden="true">{{ m.emoji }}</span> {{ t('chg.' + m.change_type) }}</span></td>
             <td class="num">{{ m.now }}</td>
             <td class="num">{{ m.was }}</td>
             <td class="num {{ 'delta-pos' if m.delta_val > 0 else 'delta-neg' if m.delta_val < 0 }}">{{ m.delta }}</td>
@@ -102,15 +103,15 @@
       </table>
     </div>
     {% else %}
-    <p class="muted">No position changes versus {{ q.prev_quarter or 'the prior filing' }} — the portfolio was held steady.</p>
+    <p class="muted">{{ t('fund.moves.none', prev=q.prev_quarter or t('fund.moves.prior')) }}</p>
     {% endif %}
     {% else %}
-    <p class="callout">This is the earliest quarter on record for this manager, so there's no prior filing to compare against yet. As new quarters load, moves will appear here.</p>
+    <p class="callout">{{ t('fund.moves.earliest') }}</p>
     {% endif %}
 
   </div>
   {% endfor %}
 </section>
 
-<script src="{{ root }}assets/app.js"></script>
+<script src="{{ asset_root }}assets/app.js"></script>
 {% endblock %}

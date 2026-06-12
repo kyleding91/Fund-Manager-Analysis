@@ -1,45 +1,42 @@
 {% extends "base.html" %}
-{% block title %}{{ site_name }} — value-oriented 13F managers, {{ quarter }}{% endblock %}
+{% block title %}{{ t('home.title', site=site_name, q=quarter) }}{% endblock %}
 {% block content %}
 
 <section class="hero">
-  <div class="eyebrow">SEC 13F screen · {{ quarter }}</div>
-  <h1>Where concentrated, value-oriented capital is invested</h1>
-  <p class="lede">A curated universe of institutional managers reporting more than $2&nbsp;billion in
-  concentrated U.S. equity portfolios (30 or fewer companies, or up to 50 when the top&nbsp;10 are
-  &ge;80% of assets) — the high-conviction end of the 13F universe. Membership is sticky: see the
-  <a href="methodology.html">methodology</a>. Built automatically from public SEC filings.</p>
+  <div class="eyebrow">{{ t('home.eyebrow') }} · {{ quarter }}</div>
+  <h1>{{ t('home.h1') }}</h1>
+  <p class="lede">{{ t('home.lede')|safe }}</p>
 </section>
 
 <section class="section">
   <div class="kpis">
     <div class="kpi">
-      <div class="label">Investment managers</div>
+      <div class="label">{{ t('home.kpi.managers') }}</div>
       <div class="value">{{ u.num_filers }}</div>
-      <div class="sub">members of the screened universe</div>
+      <div class="sub">{{ t('home.kpi.managers_sub') }}</div>
     </div>
     <div class="kpi">
-      <div class="label">Combined assets</div>
+      <div class="label">{{ t('home.kpi.assets') }}</div>
       <div class="value">{{ u.total_aum }}</div>
-      <div class="sub">disclosed U.S. long positions</div>
+      <div class="sub">{{ t('home.kpi.assets_sub') }}</div>
     </div>
     <div class="kpi">
-      <div class="label">Median holdings</div>
+      <div class="label">{{ t('home.kpi.median') }}</div>
       <div class="value">{{ u.median_issuers }}</div>
-      <div class="sub">distinct companies per manager</div>
+      <div class="sub">{{ t('home.kpi.median_sub') }}</div>
     </div>
     <div class="kpi">
-      <div class="label">Disclosed positions</div>
+      <div class="label">{{ t('home.kpi.positions') }}</div>
       <div class="value">{{ "{:,}".format(u.total_positions) }}</div>
-      <div class="sub">across the screened universe</div>
+      <div class="sub">{{ t('home.kpi.positions_sub') }}</div>
     </div>
   </div>
 </section>
 
 <section class="section">
-  <h2>Most-held stocks</h2>
-  <p class="section-sub">The companies owned by the most members this quarter — a conviction signal (ETF/index positions excluded).
-  <a href="{{ root }}stocks.html">See all &rarr;</a></p>
+  <h2>{{ t('home.mostheld.h2') }}</h2>
+  <p class="section-sub">{{ t('home.mostheld.sub') }}
+  <a href="{{ root }}stocks.html">{{ t('home.mostheld.all')|safe }}</a></p>
   <div class="card">
     <div class="barlist">
       {% for s in u.most_held[:12] %}
@@ -56,8 +53,8 @@
 <section class="section">
   <div class="grid-2">
     <div class="card">
-      <h3>Assets under management</h3>
-      <p class="hint">Distribution of 13F AUM across the screened universe.</p>
+      <h3>{{ t('home.aum.h3') }}</h3>
+      <p class="hint">{{ t('home.aum.hint') }}</p>
       <div class="histogram">
         {% for b in u.aum_hist %}
         <div class="histobar">
@@ -69,8 +66,8 @@
       </div>
     </div>
     <div class="card">
-      <h3>Portfolio concentration</h3>
-      <p class="hint">Number of distinct companies held. Admission requires &le;30 (or &le;50 if top-heavy); lapsed members can sit above that.</p>
+      <h3>{{ t('home.conc.h3') }}</h3>
+      <p class="hint">{{ t('home.conc.hint')|safe }}</p>
       <div class="histogram">
         {% for b in u.issuer_hist %}
         <div class="histobar">
@@ -87,8 +84,8 @@
 <section class="section">
   <div class="grid-2">
     <div class="card">
-      <h3>Highest single-position conviction</h3>
-      <p class="hint">Largest holding as a share of the manager's portfolio.</p>
+      <h3>{{ t('home.conv.h3') }}</h3>
+      <p class="hint">{{ t('home.conv.hint') }}</p>
       <div class="barlist">
         {% for c in u.top_concentration[:8] %}
         <div class="barrow">
@@ -100,16 +97,16 @@
       </div>
     </div>
     <div class="card">
-      <h3>New members</h3>
-      <p class="hint">First-time qualifiers this quarter — same list as the <a href="moves.html">This quarter</a> page.</p>
+      <h3>{{ t('home.new.h3') }}</h3>
+      <p class="hint">{{ t('home.new.hint')|safe }}</p>
       {% if u.new_managers %}
       <ul class="plain-list">
         {% for m in u.new_managers[:8] %}
-        <li><a href="{{ root }}funds/{{ m.cik }}.html">{{ m.manager_name }}</a> <span class="muted">{{ m.aum }} · {{ m.num_issuers }} names</span></li>
+        <li><a href="{{ root }}funds/{{ m.cik }}.html">{{ m.manager_name }}</a> <span class="muted">{{ t('common.aum_names', aum=m.aum, n=m.num_issuers) }}</span></li>
         {% endfor %}
       </ul>
       {% else %}
-      <p class="muted">None this quarter.</p>
+      <p class="muted">{{ t('common.none_quarter') }}</p>
       {% endif %}
     </div>
   </div>

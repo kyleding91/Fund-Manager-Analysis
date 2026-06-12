@@ -25,6 +25,12 @@ any screen/roster/curation logic, and keep it updated when that logic changes.
 - After data or config changes, the verification path is:
   `python3 -m unittest discover -s tests` → `python3 evaluate_screen.py` →
   `python3 build_site.py`.
+- **The site is bilingual — Chinese (default, site root) + English (/en/).**
+  Every visitor-facing string lives in `src/i18n.py` as an en/zh pair; templates
+  must use `t('key')` and NEVER hardcode display text. When adding or changing
+  site copy, update BOTH languages in the same edit (a missing key fails the
+  build — that's intentional). Company/manager names, quarter labels, and
+  financial terms (13F, AUM, ETF, CUSIP) stay in English in both versions.
 
 ## Learning capture (important)
 

@@ -436,17 +436,6 @@ def _share_change(now: float, prev: float) -> str:
 _CHANGE_GLYPHS = {"new": "+", "added": "\u25b2", "trimmed": "\u25bc", "exited": "\u00d7"}
 
 
-# Plain-English versions of the mechanical reject reasons, for the lapsed list.
-_LAPSE_REASONS = {
-    "aum_below_floor": "dipped below $2B",
-    "not_concentrated": "drifted past the concentration limits",
-    "below_min_holdings": "fewer than 3 names",
-    "mostly_etfs": "book is now mostly ETFs",
-    "too_many_holdings_for_weight": "top-heavy but holds more than 50 names",
-    "confidential": "filed confidentially",
-}
-
-
 def _universe_stats(conn, quarter: str) -> dict:
     """Same universe definition as _shown_manager_count, plus combined AUM."""
     row = conn.execute(
@@ -565,10 +554,9 @@ def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10)
         "lapsed": [{"cik": str(r["cik"]), "name": r["manager_name"],
                     "aum": usd(float(r["total_aum_usd"] or 0)),
                     "num_issuers": int(r["num_issuers"] or 0),
-                    "reason": ("filed without disclosing holdings"
-                               if not (r["num_issuers"] or 0)
-                               else _LAPSE_REASONS.get(r.get("reject_reason") or "",
-                                                       r.get("reject_reason") or ""))}
+                    # i18n key suffix — templates render t('lapse.' + reason_key)
+                    "reason_key": ("no_disclosure" if not (r["num_issuers"] or 0)
+                                   else (r.get("reject_reason") or "not_concentrated"))}
                    for r in chg.get("lapsed", [])],
     }
 
@@ -685,8 +673,8 @@ def fund_detail(conn, cik: str, quarter: str, max_quarters: int = 5,
             "num_positions": int(t.num_positions),
             "top_n_pct": pct(top_n_pct),
             "meets_criteria": meets,
-            "lapse_reason": _LAPSE_REASONS.get(raw_reason, raw_reason)
-                            if not meets else "",
+            # i18n key suffix for the callout (empty when the quarter passed)
+            "lapse_key": (raw_reason or "not_concentrated") if not meets else "",
             "form_type": t.form_type,
             "date_filed": t.date_filed,
             "accession": t.accession,

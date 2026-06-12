@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ html_lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ site_name }}{% endblock %}</title>
-  <meta name="description" content="{% block description %}A quarterly screen of value-oriented, concentrated institutional managers, built from SEC EDGAR 13F filings.{% endblock %}">
+  <meta name="description" content="{% block description %}{{ t('meta.description') }}{% endblock %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="{{ root }}assets/style.css">
+  <link rel="stylesheet" href="{{ asset_root }}assets/style.css">
+  <link rel="alternate" hreflang="{{ alt_hreflang }}" href="{{ switch_href }}">
 
   <!-- Progressive Web App: installable on the iPhone/Android home screen -->
-  <link rel="manifest" href="{{ root }}manifest.webmanifest">
+  <link rel="manifest" href="{{ asset_root }}manifest.webmanifest">
   <meta name="theme-color" content="#14253A">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ root }}assets/favicon-32.png">
-  <link rel="apple-touch-icon" href="{{ root }}assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ asset_root }}assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="{{ asset_root }}assets/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -21,14 +22,14 @@
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
         navigator.serviceWorker
-          .register("{{ root }}sw.js", { scope: "{{ root }}" })
+          .register("{{ asset_root }}sw.js", { scope: "{{ asset_root }}" })
           .catch(function () { /* offline support is best-effort */ });
       });
     }
   </script>
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
+<a class="skip-link" href="#main">{{ t('skip') }}</a>
 <header class="masthead">
   <div class="container masthead-inner">
     <a class="brand" href="{{ root }}index.html">
@@ -36,11 +37,12 @@
       <span class="brand-name">Value Flow</span>
     </a>
     <nav class="nav">
-      <a href="{{ root }}index.html" class="{{ 'active' if active=='home' }}">Overview</a>
-      <a href="{{ root }}moves.html" class="{{ 'active' if active=='moves' }}">This quarter</a>
-      <a href="{{ root }}funds.html" class="{{ 'active' if active=='funds' }}">Managers</a>
-      <a href="{{ root }}stocks.html" class="{{ 'active' if active=='stocks' }}">Most-held stocks</a>
-      <a href="{{ root }}methodology.html" class="{{ 'active' if active=='methodology' }}">Methodology</a>
+      <a href="{{ root }}index.html" class="{{ 'active' if active=='home' }}">{{ t('nav.overview') }}</a>
+      <a href="{{ root }}moves.html" class="{{ 'active' if active=='moves' }}">{{ t('nav.quarter') }}</a>
+      <a href="{{ root }}funds.html" class="{{ 'active' if active=='funds' }}">{{ t('nav.managers') }}</a>
+      <a href="{{ root }}stocks.html" class="{{ 'active' if active=='stocks' }}">{{ t('nav.stocks') }}</a>
+      <a href="{{ root }}methodology.html" class="{{ 'active' if active=='methodology' }}">{{ t('nav.methodology') }}</a>
+      <a href="{{ switch_href }}" class="lang-switch" lang="{{ alt_hreflang }}" title="{{ t('nav.switch') }}">{{ t('nav.switch') }}</a>
     </nav>
   </div>
 </header>
@@ -53,12 +55,10 @@
   <div class="container footer-inner">
     <div>
       <strong>{{ site_name }}</strong>
-      <p class="muted">Data sourced from <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=13F" rel="noopener">SEC EDGAR 13F filings</a>.
-      Latest quarter: <strong>{{ quarter }}</strong>{% if freshness.loaded %} · data loaded {{ freshness.loaded }}{% endif %} · site built {{ freshness.generated }}.</p>
+      <p class="muted">{{ t('footer.source')|safe }}
+      {{ t('footer.latest') }} <strong>{{ quarter }}</strong>{% if freshness.loaded %} · {{ t('footer.loaded') }} {{ freshness.loaded }}{% endif %} · {{ t('footer.built') }} {{ freshness.generated }}.</p>
     </div>
-    <p class="muted disclaimer">For informational purposes only. Not investment advice. 13F filings are
-    disclosed up to 45 days after quarter-end, cover long U.S.-listed positions only, and exclude short
-    positions and most derivatives. Figures are aggregated from public filings and may contain errors.</p>
+    <p class="muted disclaimer">{{ t('footer.disclaimer') }}</p>
   </div>
 </footer>
 </body>
