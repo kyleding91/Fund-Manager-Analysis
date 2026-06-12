@@ -6,70 +6,76 @@ Apple home-screen tags point at. Re-run this if the brand mark or colours change
 
     python make_icons.py
 
-Brand: ink-navy background, emerald baseline accent, white "VF" wordmark — the
-same identity as the site masthead.
+Brand mark: "The Evergreen" — an abstract conifer drawn as three chevron
+strokes (mint, fading upward like layered boughs) over a short cream trunk, on
+the ink-navy tile. Chosen for the long-term, evergreen ethos of value
+investing; the stroke-based mark matches the site's sparkline language.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "web" / "static"
 
-NAVY = (20, 37, 58)        # --ink   #14253A
-EMERALD = (14, 124, 102)   # --emerald #0E7C66
-WHITE = (255, 255, 255)
-
-# Candidate bold serif fonts (macOS first), fall back to PIL's bundled font.
-FONT_CANDIDATES = [
-    "/System/Library/Fonts/Supplemental/Georgia Bold.ttf",
-    "/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf",
-    "/System/Library/Fonts/Supplemental/Palatino.ttc",
-    "/Library/Fonts/Georgia Bold.ttf",
-]
+NAVY = (20, 37, 58)         # --ink   #14253A
+MINT = (47, 182, 140)       # bright emerald for dark tiles  #2FB68C
+CREAM = (244, 239, 228)     # trunk  #F4EFE4
 
 
-def _font(size: int) -> ImageFont.FreeTypeFont:
-    for path in FONT_CANDIDATES:
-        if Path(path).exists():
-            try:
-                return ImageFont.truetype(path, size)
-            except Exception:
-                continue
-    return ImageFont.load_default()
+def _blend(fg: tuple, bg: tuple, alpha: float) -> tuple:
+    """Flatten an alpha against the background (icons are opaque PNGs)."""
+    return tuple(round(f * alpha + b * (1 - alpha)) for f, b in zip(fg, bg))
 
 
-def _render(size: int, *, safe: float = 1.0) -> Image.Image:
+def _stroke(d: ImageDraw.ImageDraw, pts: list[tuple], width: int, fill: tuple) -> None:
+    """A polyline with round caps and joints (PIL lines are butt-capped)."""
+    d.line(pts, fill=fill, width=width, joint="curve")
+    r = width / 2
+    for (x, y) in (pts[0], pts[-1]):
+        d.ellipse([x - r, y - r, x + r, y + r], fill=fill)
+
+
+def _render(size: int, *, safe: float = 1.0, supersample: int = 4) -> Image.Image:
     """Draw one square icon. ``safe`` (<=1) shrinks the mark toward the centre so
-    a maskable icon survives Android's circular/rounded crop."""
-    img = Image.new("RGB", (size, size), NAVY)
+    a maskable icon survives Android's circular/rounded crop. Drawn oversized
+    and downscaled for smooth, anti-aliased strokes."""
+    S = size * supersample
+    img = Image.new("RGB", (S, S), NAVY)
     d = ImageDraw.Draw(img)
 
-    # Emerald baseline bar sitting under the wordmark.
-    bar_w = int(size * 0.42 * safe)
-    bar_h = max(2, int(size * 0.05 * safe))
-    bar_x = (size - bar_w) // 2
-    bar_y = int(size * 0.66)
-    radius = bar_h // 2
-    d.rounded_rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h],
-                        radius=radius, fill=EMERALD)
+    def pt(x: float, y: float) -> tuple:
+        # Design coordinates on a 100x100 grid, scaled around the centre.
+        return (S / 2 + (x - 50) * S / 100 * safe,
+                S / 2 + (y - 50) * S / 100 * safe)
 
-    # "VF" wordmark, centred above the bar.
-    font = _font(int(size * 0.46 * safe))
-    d.text((size / 2, size * 0.42), "VF", font=font, fill=WHITE, anchor="mm")
-    return img
+    w = max(2, round(S * 0.07 * safe))           # stroke weight (7% of tile)
+
+    # Three boughs, brightest on top — the same geometry as the approved comp.
+    boughs = [
+        ([pt(34, 40), pt(50, 24), pt(66, 40)], 1.00),
+        ([pt(28, 58), pt(50, 40), pt(72, 58)], 0.80),
+        ([pt(22, 76), pt(50, 56), pt(78, 76)], 0.60),
+    ]
+    for pts, alpha in boughs:
+        _stroke(d, pts, w, _blend(MINT, NAVY, alpha))
+
+    # Cream trunk.
+    _stroke(d, [pt(50, 70), pt(50, 84)], w, CREAM)
+
+    return img.resize((size, size), Image.LANCZOS)
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     jobs = [
-        ("icon-192.png", 192, 1.0),
-        ("icon-512.png", 512, 1.0),
-        ("icon-512-maskable.png", 512, 0.78),  # extra padding for safe zone
-        ("apple-touch-icon.png", 180, 1.0),    # iOS home-screen icon
-        ("favicon-32.png", 32, 1.0),
+        ("icon-192.png", 192, 0.92),
+        ("icon-512.png", 512, 0.92),
+        ("icon-512-maskable.png", 512, 0.72),  # extra padding for safe zone
+        ("apple-touch-icon.png", 180, 0.92),   # iOS home-screen icon
+        ("favicon-32.png", 32, 1.0),           # tiny: use the full tile
     ]
     for name, size, safe in jobs:
         _render(size, safe=safe).save(OUT / name, "PNG")

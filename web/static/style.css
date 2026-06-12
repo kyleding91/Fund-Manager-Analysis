@@ -49,10 +49,7 @@ a:hover { text-decoration: underline; }
 .masthead-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 24px; }
 .brand { display: flex; align-items: baseline; gap: 10px; color: #fff; }
 .brand:hover { text-decoration: none; }
-.brand-mark {
-  font-family: var(--mono); font-weight: 700; letter-spacing: .5px;
-  background: var(--emerald); color: #fff; padding: 3px 8px; border-radius: 6px; font-size: 15px;
-}
+.brand-tree { align-self: center; flex-shrink: 0; }
 .brand-name { font-family: var(--serif); font-size: 19px; letter-spacing: .2px; }
 .nav { display: flex; gap: 22px; flex-wrap: wrap; }
 .nav a { color: #C9D2DC; font-size: 14.5px; font-weight: 500; padding: 4px 0; border-bottom: 2px solid transparent; }
