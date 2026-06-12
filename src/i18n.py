@@ -70,8 +70,8 @@ S: dict[str, dict[str, str]] = {
     "home.eyebrow": {"en": "SEC 13F screen", "zh": "SEC 13F 筛选"},
     "home.h1": {"en": "Where concentrated, value-oriented capital is invested", "zh": "集中持仓的价值型资本流向何处"},
     "home.lede": {
-        "en": 'A curated universe of institutional managers reporting more than $2&nbsp;billion in concentrated U.S. equity portfolios (30 or fewer companies, or up to 50 when the top&nbsp;10 are &ge;80% of assets) — the high-conviction end of the 13F universe. Membership is sticky: see the <a href="methodology.html">methodology</a>. Built automatically from public SEC filings.',
-        "zh": '一份精选的机构管理人名单:其披露的美股集中组合规模超过 $2B(持仓不超过 30 家公司;若前 10 大持仓占资产 &ge;80%,则最多 50 家)——这是 13F 申报中信念最强的一端。成员资格具有粘性:见<a href="methodology.html">方法论</a>。全站由公开 SEC 文件自动生成。',
+        "en": 'A curated universe of value-investing managers reporting more than $2&nbsp;billion in concentrated U.S. equity portfolios. See the <a href="methodology.html">methodology</a>. Built automatically from public SEC filings.',
+        "zh": '一份精选的价值投资管理人名单:其披露的美股集中组合规模超过 $2B。见<a href="methodology.html">方法论</a>。全站由公开 SEC 文件自动生成。',
     },
     "home.kpi.managers": {"en": "Investment managers", "zh": "投资管理人"},
     "home.kpi.managers_sub": {"en": "members of the screened universe", "zh": "筛选名单成员数"},
