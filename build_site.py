@@ -32,6 +32,9 @@ from src import config, i18n, site_data as sd
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
 SITE_NAME = "Value Flow"
+# Absolute base URL of the published site — social-share crawlers (WeChat,
+# iMessage, Twitter) require ABSOLUTE og:image URLs, relative ones are ignored.
+SITE_BASE_URL = "https://kyleding91.github.io/Fund-Manager-Analysis/"
 
 # (language, subdirectory) — the first entry is the default at the site root.
 LANG_DIRS = (("en", ""), ("zh", "zh"))
@@ -88,7 +91,8 @@ def build(out_dir: Path, quarter: str | None = None) -> dict:
                     top_n=config.TOP_N, top_n_min_pct=int(config.TOP_N_MIN_PCT))
     common = dict(site_name=SITE_NAME, quarter=quarter,
                   quarter_slug=_quarter_slug(quarter), freshness=fresh,
-                  all_quarters=qs, criteria=criteria)
+                  all_quarters=qs, criteria=criteria,
+                  og_image=SITE_BASE_URL + "assets/icon-512.png")
 
     # fresh output (preserve nothing stale)
     if out_dir.exists():
