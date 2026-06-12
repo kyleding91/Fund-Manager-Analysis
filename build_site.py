@@ -6,7 +6,7 @@ static HTML pages + assets into an output directory (default: ./site), ready to
 publish on GitHub Pages, Cloudflare Pages, or any static host.
 
 Languages: the site is built TWICE from the same templates and data —
-Chinese (the default) at the site root, English under /en/. All UI strings come
+English (the default) at the site root, Chinese under /zh/. All UI strings come
 from src/i18n.py (en/zh pairs side by side); templates contain no hardcoded
 prose, and every page carries a language switcher to its exact counterpart.
 
@@ -34,7 +34,7 @@ WEB = ROOT / "web"
 SITE_NAME = "Value Flow"
 
 # (language, subdirectory) — the first entry is the default at the site root.
-LANG_DIRS = (("zh", ""), ("en", "en"))
+LANG_DIRS = (("en", ""), ("zh", "zh"))
 
 
 def _env() -> Environment:
@@ -164,7 +164,7 @@ def build(out_dir: Path, quarter: str | None = None) -> dict:
                 **ctx)
             _write(lang_dir / rel_path, html)
 
-        render("index.html", "index.html", 0, active="home", u=universe, **common)
+        render("index.html", "index.html", 0, active="home", u=universe, m=moves, **common)
         pages += 1
         render("funds.html", "funds.html", 0, active="funds", funds=funds, **common)
         pages += 1

@@ -128,7 +128,7 @@ The project can generate a polished, public **website** (separate from the local
 dashboard). It's a set of plain HTML files — fast, free to host, and works on
 phones. Search, filtering and sorting still work in the browser.
 
-The site is **bilingual**: Chinese by default, English under `/en/`, with a
+The site is **bilingual**: English by default, Chinese under `/zh/`, with a
 language switcher on every page. All UI text lives in `src/i18n.py` as
 side-by-side en/zh pairs (company names and financial terms stay in English).
 

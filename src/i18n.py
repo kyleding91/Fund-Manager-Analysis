@@ -1,11 +1,11 @@
-"""Bilingual UI strings for the static site — Chinese (default) + English.
+"""Bilingual UI strings for the static site — English (default) + Chinese.
 
 EVERY visitor-facing string on the website lives here as an en/zh pair, side
 by side, so the two language versions can never drift apart: templates contain
 no hardcoded prose, and a missing translation raises at build time.
 
 Rules (owner's decisions):
-  * Chinese is the DEFAULT language (site root); English lives under /en/.
+  * English is the DEFAULT language (site root); Chinese lives under /zh/.
   * Company names, manager names, quarter labels (2026-Q1), and financial
     terms/abbreviations (13F, AUM, ETF, CUSIP, SEC EDGAR) stay in English.
   * When adding or changing site copy, add/update BOTH languages here in the
@@ -16,7 +16,7 @@ contain HTML links — templates render those with the |safe filter.
 """
 from __future__ import annotations
 
-LANGS = ("zh", "en")          # zh first = default (site root)
+LANGS = ("en", "zh")          # en first = default (site root)
 HTML_LANG = {"zh": "zh-CN", "en": "en"}
 
 S: dict[str, dict[str, str]] = {
@@ -88,10 +88,12 @@ S: dict[str, dict[str, str]] = {
     "home.aum.hint": {"en": "Distribution of 13F AUM across the screened universe.", "zh": "成员 13F 资产规模(AUM)的分布。"},
     "home.conc.h3": {"en": "Portfolio concentration", "zh": "组合集中度"},
     "home.conc.hint": {"en": "Number of distinct companies held. Admission requires &le;30 (or &le;50 if top-heavy); lapsed members can sit above that.", "zh": "持有公司数量的分布。入选要求 &le;30 家(头部集中时 &le;50 家);暂离标准的成员可能高于该值。"},
-    "home.conv.h3": {"en": "Highest single-position conviction", "zh": "单一持仓信念最高"},
-    "home.conv.hint": {"en": "Largest holding as a share of the manager's portfolio.", "zh": "最大持仓占该管理人组合的比例。"},
-    "home.new.h3": {"en": "New members", "zh": "新成员"},
-    "home.new.hint": {"en": 'First-time qualifiers this quarter — same list as the <a href="moves.html">This quarter</a> page.', "zh": '本季首次达标加入——与<a href="moves.html">本季动向</a>页一致。'},
+    "home.topmgr.h3": {"en": "Top managers by AUM", "zh": "资产规模 Top 10 管理人"},
+    "home.topmgr.hint": {"en": "The ten largest members by disclosed 13F assets.", "zh": "按披露 13F 资产排序的前十大成员。"},
+    "home.flows.h3": {"en": "Money moves this quarter", "zh": "本季资金动向"},
+    "home.flows.hint": {"en": 'Largest estimated net buying and selling — the full story is on the <a href="moves.html">This quarter</a> page.', "zh": '估算净买入与净卖出最大的公司——完整内容见<a href="moves.html">本季动向</a>页。'},
+    "home.flows.in": {"en": "Top buys", "zh": "净买入 Top 5"},
+    "home.flows.out": {"en": "Top sells", "zh": "净卖出 Top 5"},
 
     # ---- This quarter (moves) ----------------------------------------------
     "moves.title": {"en": "This quarter's money moves — {site} ({q})", "zh": "本季资金动向 — {site}({q})"},

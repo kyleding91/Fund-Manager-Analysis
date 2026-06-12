@@ -84,31 +84,36 @@
 <section class="section">
   <div class="grid-2">
     <div class="card">
-      <h3>{{ t('home.conv.h3') }}</h3>
-      <p class="hint">{{ t('home.conv.hint') }}</p>
+      <h3>{{ t('home.topmgr.h3') }}</h3>
+      <p class="hint">{{ t('home.topmgr.hint') }}</p>
       <div class="barlist">
-        {% for c in u.top_concentration[:8] %}
+        {% for r in u.top_managers %}
         <div class="barrow">
-          <span class="name"><a href="{{ root }}funds/{{ c.cik }}.html">{{ c.manager_name }}</a></span>
-          <span class="track"><span class="fill" style="width: {{ c.top_pct_val }}%"></span></span>
-          <span class="val">{{ c.top_pct }}</span>
+          <span class="name"><a href="{{ root }}funds/{{ r.cik }}.html">{{ r.manager_name }}</a></span>
+          <span class="track"><span class="fill" style="width: {{ r.width }}%"></span></span>
+          <span class="val">{{ r.aum }}</span>
         </div>
         {% endfor %}
       </div>
     </div>
+    {% if m %}
     <div class="card">
-      <h3>{{ t('home.new.h3') }}</h3>
-      <p class="hint">{{ t('home.new.hint')|safe }}</p>
-      {% if u.new_managers %}
-      <ul class="plain-list">
-        {% for m in u.new_managers[:8] %}
-        <li><a href="{{ root }}funds/{{ m.cik }}.html">{{ m.manager_name }}</a> <span class="muted">{{ t('common.aum_names', aum=m.aum, n=m.num_issuers) }}</span></li>
+      <h3>{{ t('home.flows.h3') }}</h3>
+      <p class="hint">{{ t('home.flows.hint')|safe }}</p>
+      <p class="hint" style="margin-bottom:6px;"><strong class="delta-pos">{{ t('home.flows.in') }}</strong></p>
+      <ul class="plain-list" style="margin-bottom:14px;">
+        {% for s in m.money_in[:5] %}
+        <li>{% if s.linked %}<a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a>{% else %}{{ s.issuer }}{% endif %} <span class="num delta-pos">+{{ s.net_flow }}</span></li>
         {% endfor %}
       </ul>
-      {% else %}
-      <p class="muted">{{ t('common.none_quarter') }}</p>
-      {% endif %}
+      <p class="hint" style="margin-bottom:6px;"><strong class="delta-neg">{{ t('home.flows.out') }}</strong></p>
+      <ul class="plain-list">
+        {% for s in m.money_out[:5] %}
+        <li>{% if s.linked %}<a href="{{ root }}stocks/{{ s.cusip }}.html">{{ s.issuer }}</a>{% else %}{{ s.issuer }}{% endif %} <span class="num delta-neg">−{{ s.net_flow }}</span></li>
+        {% endfor %}
+      </ul>
     </div>
+    {% endif %}
   </div>
 </section>
 

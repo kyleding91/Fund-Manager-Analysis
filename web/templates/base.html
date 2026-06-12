@@ -41,7 +41,6 @@
       <a href="{{ root }}moves.html" class="{{ 'active' if active=='moves' }}">{{ t('nav.quarter') }}</a>
       <a href="{{ root }}funds.html" class="{{ 'active' if active=='funds' }}">{{ t('nav.managers') }}</a>
       <a href="{{ root }}stocks.html" class="{{ 'active' if active=='stocks' }}">{{ t('nav.stocks') }}</a>
-      <a href="{{ root }}methodology.html" class="{{ 'active' if active=='methodology' }}">{{ t('nav.methodology') }}</a>
       <a href="{{ switch_href }}" class="lang-switch" lang="{{ alt_hreflang }}" title="{{ t('nav.switch') }}">{{ t('nav.switch') }}</a>
     </nav>
   </div>
@@ -54,7 +53,7 @@
 <footer class="footer">
   <div class="container footer-inner">
     <div>
-      <strong>{{ site_name }}</strong>
+      <strong>{{ site_name }}</strong> · <a href="{{ root }}methodology.html">{{ t('nav.methodology') }}</a>
       <p class="muted">{{ t('footer.source')|safe }}
       {{ t('footer.latest') }} <strong>{{ quarter }}</strong>{% if freshness.loaded %} · {{ t('footer.loaded') }} {{ freshness.loaded }}{% endif %} · {{ t('footer.built') }} {{ freshness.generated }}.</p>
     </div>

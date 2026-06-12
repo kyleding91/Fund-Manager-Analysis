@@ -96,30 +96,30 @@ class TestBuildSite(unittest.TestCase):
         self.assertTrue((out / "data" / "managers-2025q1.csv").exists())
 
         # Per-fund pages for both managers — in BOTH language trees.
-        akre = out / "en" / "funds" / "1112520.html"
+        akre = out / "funds" / "1112520.html"                            # en default
         self.assertTrue(akre.exists())
-        self.assertTrue((out / "funds" / "1112520.html").exists())      # zh default
+        self.assertTrue((out / "zh" / "funds" / "1112520.html").exists())
         self.assertTrue((out / "funds" / "0001067983.html").exists())
-        self.assertTrue((out / "en" / "funds" / "0001067983.html").exists())
+        self.assertTrue((out / "zh" / "funds" / "0001067983.html").exists())
 
         # Per-stock page (MASTERCARD, issuer CUSIP 57636Q) exists, names its
         # holder, links back to that manager, and the most-held page links to it.
-        stock = out / "en" / "stocks" / "57636Q.html"
+        stock = out / "stocks" / "57636Q.html"
         self.assertTrue(stock.exists())
         stock_html = stock.read_text(encoding="utf-8")
         self.assertIn("MASTERCARD", stock_html)
         self.assertIn("Akre Capital Management", stock_html)
         self.assertIn("../funds/1112520.html", stock_html)
-        stocks_html = (out / "en" / "stocks.html").read_text(encoding="utf-8")
+        stocks_html = (out / "stocks.html").read_text(encoding="utf-8")
         self.assertIn("stocks/57636Q.html", stocks_html)
-        # zh default tree mirrors the same stock page and link.
-        self.assertTrue((out / "stocks" / "57636Q.html").exists())
+        # zh mirror has the same stock page and link.
+        self.assertTrue((out / "zh" / "stocks" / "57636Q.html").exists())
         self.assertIn("stocks/57636Q.html",
-                      (out / "stocks.html").read_text(encoding="utf-8"))
+                      (out / "zh" / "stocks.html").read_text(encoding="utf-8"))
 
         # The quarterly money-moves page exists, is linked in the nav, and
         # names the manager behind a move.
-        moves = out / "en" / "moves.html"
+        moves = out / "moves.html"
         self.assertTrue(moves.exists())
         moves_html = moves.read_text(encoding="utf-8")
         self.assertIn("How money moved this quarter", moves_html)
@@ -133,17 +133,17 @@ class TestBuildSite(unittest.TestCase):
         self.assertGreaterEqual(res["pages"], 6)
         self.assertGreaterEqual(res["stocks"], 1)
 
-        # Home pages carry the brand; the zh default is actually Chinese, each
-        # links to its counterpart in the other language.
-        home_zh = (out / "index.html").read_text(encoding="utf-8")
-        home_en = (out / "en" / "index.html").read_text(encoding="utf-8")
-        self.assertIn("Value Flow", home_zh)
-        self.assertIn('lang="zh-CN"', home_zh)
-        self.assertIn("热门持仓", home_zh)                  # zh UI string
-        self.assertIn('href="en/index.html"', home_zh)      # switch to EN
+        # Home pages carry the brand; English is the default at the root, the
+        # Chinese mirror lives under /zh/, each links to its counterpart.
+        home_en = (out / "index.html").read_text(encoding="utf-8")
+        home_zh = (out / "zh" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("Value Flow", home_en)
         self.assertIn('lang="en"', home_en)
         self.assertIn("Most-held stocks", home_en)
-        self.assertIn('href="../index.html"', home_en)      # switch back to zh
+        self.assertIn('href="zh/index.html"', home_en)       # switch to zh
+        self.assertIn('lang="zh-CN"', home_zh)
+        self.assertIn("热门持仓", home_zh)                   # zh UI string
+        self.assertIn('href="../index.html"', home_zh)       # switch back to en
 
         # Akre's page shows the QoQ moves (KKR is new, Moodys exited).
         akre_html = akre.read_text(encoding="utf-8")
@@ -173,7 +173,7 @@ class TestBuildSite(unittest.TestCase):
 
         # A single-quarter manager (Berkshire) still renders a QoQ section, just
         # with the no-comparison note — the view is consistent for all managers.
-        bh_html = (out / "en" / "funds" / "0001067983.html").read_text(encoding="utf-8")
+        bh_html = (out / "funds" / "0001067983.html").read_text(encoding="utf-8")
         self.assertIn("Quarter-over-quarter moves", bh_html)
         self.assertIn("earliest quarter on record", bh_html)
 

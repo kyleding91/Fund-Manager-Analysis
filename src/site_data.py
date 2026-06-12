@@ -206,28 +206,12 @@ def universe(conn, quarter: str) -> dict:
         for row in mh.itertuples(index=False)
     ], "num_funds")
 
-    # "Highest single-position conviction": every member counts (they're all
-    # presented as managers); just skip near-single-stake books, where a 100%
-    # top position is trivial rather than a conviction signal.
-    tc = insights.top_concentration(conn, quarter, limit=150)
-    top_conc = [
-        {"manager_name": row.manager_name, "top_holding": row.top_holding,
-         "top_pct": pct(float(row.top_pct)), "top_pct_val": round(float(row.top_pct), 1),
-         "aum": usd(float(row.total_aum_usd)),
-         "cik": str(_cik_for(conn, row.manager_name, quarter))}
-        for row in tc.itertuples(index=False)
-        if int(row.num_issuers) >= 2
-    ][:12]
-
-    # New members this quarter — same definition as the This-quarter page
-    # (roster joins), so the two lists can never disagree.
-    chg = insights.screen_changes(conn, quarter) or {"entered": []}
-    new_mgrs = [
-        {"manager_name": r["manager_name"], "cik": str(r["cik"]),
-         "aum": usd(float(r["total_aum_usd"] or 0)),
-         "num_issuers": int(r["num_issuers"] or 0)}
-        for r in chg["entered"]
-    ][:12]
+    # Top 10 members by disclosed assets (the homepage leaderboard).
+    top_managers = _bars([
+        {"manager_name": r["manager_name"], "cik": r["cik"],
+         "aum": r["aum"], "aum_usd": r["aum_usd"]}
+        for r in sorted(rows, key=lambda r: r["aum_usd"], reverse=True)[:10]
+    ], "aum_usd")
 
     total_aum = sum(r["aum_usd"] for r in rows)
     mgr_aum = sum(r["aum_usd"] for r in managers)
@@ -244,8 +228,7 @@ def universe(conn, quarter: str) -> dict:
         "aum_hist": aum_hist,
         "issuer_hist": iss_hist,
         "most_held": most_held,
-        "top_concentration": top_conc,
-        "new_managers": new_mgrs,
+        "top_managers": top_managers,
     }
 
 
@@ -559,16 +542,6 @@ def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10)
                                    else (r.get("reject_reason") or "not_concentrated"))}
                    for r in chg.get("lapsed", [])],
     }
-
-
-def _cik_for(conn, manager_name: str, quarter: str) -> str:
-    row = conn.execute(
-        f"""SELECT f.cik FROM filings f JOIN funds fn ON fn.cik=f.cik
-           WHERE fn.manager_name=? AND f.quarter_label=? AND f.is_current=1
-             AND {curation.screen_predicate("f.")} LIMIT 1""",
-        (manager_name, quarter),
-    ).fetchone()
-    return row[0] if row else ""
 
 
 def _median(xs: list[int]) -> int:
