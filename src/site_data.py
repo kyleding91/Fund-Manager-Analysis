@@ -277,10 +277,15 @@ def all_stock_cusips(conn, quarter: str) -> list[str]:
 
 
 def _shown_manager_count(conn, quarter: str) -> int:
+    """Members with disclosed holdings this quarter — the ONE universe size
+    every page shows (no-holdings "notice" filings are excluded here exactly
+    as they are in the directory and the homepage KPIs)."""
     row = conn.execute(
         f"""SELECT COUNT(DISTINCT f.cik) FROM filings f
             WHERE f.is_current = 1 AND {curation.screen_predicate('f.')}
-              AND f.quarter_label = ?""",
+              AND f.quarter_label = ?
+              AND (COALESCE(f.num_positions, 0) > 0
+                   OR COALESCE(f.total_aum_usd, 0) > 0)""",
         (quarter,),
     ).fetchone()
     return int(row[0] or 0)
@@ -443,11 +448,14 @@ _LAPSE_REASONS = {
 
 
 def _universe_stats(conn, quarter: str) -> dict:
+    """Same universe definition as _shown_manager_count, plus combined AUM."""
     row = conn.execute(
         f"""SELECT COUNT(DISTINCT f.cik) AS n, SUM(f.total_aum_usd) AS aum
             FROM filings f
             WHERE f.is_current = 1 AND {curation.screen_predicate('f.')}
-              AND f.quarter_label = ?""",
+              AND f.quarter_label = ?
+              AND (COALESCE(f.num_positions, 0) > 0
+                   OR COALESCE(f.total_aum_usd, 0) > 0)""",
         (quarter,),
     ).fetchone()
     return {"count": int(row["n"] or 0), "aum_usd": float(row["aum"] or 0)}
@@ -536,6 +544,7 @@ def quarter_moves(conn, quarter: str, top_stocks: int = 12, top_moves: int = 10)
             "count": uni_now["count"], "aum": usd(uni_now["aum_usd"]),
             "prev_count": uni_prev["count"], "prev_aum": usd(uni_prev["aum_usd"]),
             "compared": compared,
+            "not_compared": max(0, uni_now["count"] - compared),
         },
         "gross_in": usd(gross_in),
         "gross_out": usd(abs(gross_out)),

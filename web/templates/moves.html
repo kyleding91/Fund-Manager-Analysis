@@ -13,7 +13,7 @@
 </section>
 
 <div class="kpis" style="margin-bottom:26px;">
-  <div class="kpi"><div class="label">Members compared</div><div class="value">{{ m.universe.compared }}</div><div class="sub">of {{ m.universe.count }} members — those with filings in both quarters</div></div>
+  <div class="kpi"><div class="label">Members compared</div><div class="value">{{ m.universe.compared }}</div><div class="sub">{% if m.universe.not_compared %}of {{ m.universe.count }} — {{ m.universe.not_compared }} new member{{ '' if m.universe.not_compared == 1 else 's' }} ha{{ 's' if m.universe.not_compared == 1 else 've' }} no prior filing yet{% else %}every member, against their prior filings{% endif %}</div></div>
   <div class="kpi"><div class="label">Est. money in</div><div class="value delta-pos">{{ m.gross_in }}</div></div>
   <div class="kpi"><div class="label">Est. money out</div><div class="value delta-neg">{{ m.gross_out }}</div></div>
   <div class="kpi"><div class="label">Net</div><div class="value {{ 'delta-pos' if m.net_positive else 'delta-neg' }}">{{ '+' if m.net_positive else '−' }}{{ m.net }}</div></div>
