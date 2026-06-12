@@ -6,16 +6,12 @@
   <div class="eyebrow">Directory · {{ quarter }}</div>
   <h1>Universe members</h1>
   <p class="lede">Every member of the screened universe — managers join by passing the screen and stay
-  until reviewed out, so a few currently sit below the criteria (their pages say so). Search, sort, and
-  filter by type; click any name for its full portfolio and quarter-over-quarter moves.</p>
+  until reviewed out, so a few currently sit below the criteria (their pages say so). Search and sort;
+  click any name for its full portfolio and quarter-over-quarter moves.</p>
 </section>
 
 <div class="toolbar">
   <input type="search" id="fund-search" placeholder="Search manager name…" aria-label="Search managers">
-  <div class="chips" id="type-chips">
-    <span class="chip on" data-cat="Investment Manager">💼 Managers</span>
-    <span class="chip" data-cat="__all__">All filer types</span>
-  </div>
 </div>
 <p class="count-note"><span id="row-count">0</span> shown · <a href="{{ root }}data/managers-{{ quarter_slug }}.csv">Download CSV</a></p>
 
@@ -24,7 +20,6 @@
     <thead>
       <tr>
         <th data-sort="text" data-key="name">Manager <span class="arrow">▾</span></th>
-        <th data-sort="text" data-key="type" class="">Type <span class="arrow">▾</span></th>
         <th data-sort="num" data-key="aum" class="num sorted-desc">AUM <span class="arrow">▾</span></th>
         <th data-sort="num" data-key="iss" class="num"># Holdings <span class="arrow">▾</span></th>
         <th data-sort="num" data-key="pos" class="num"># Positions <span class="arrow">▾</span></th>
@@ -37,7 +32,6 @@
           data-aum="{{ f.aum_usd }}" data-iss="{{ f.num_issuers }}"
           data-pos="{{ f.num_positions }}" data-filed="{{ f.date_filed }}">
         <td><a href="{{ root }}funds/{{ f.cik }}.html">{{ f.manager_name }}</a></td>
-        <td><span class="badge {{ 'gray' if not f.is_manager }}">{{ f.emoji }} {{ f.category }}</span></td>
         <td class="num">{{ f.aum }}</td>
         <td class="num">{{ f.num_issuers }}</td>
         <td class="num">{{ f.num_positions }}</td>

@@ -176,20 +176,14 @@ def all_manager_ciks(conn) -> list[str]:
 
 
 def universe(conn, quarter: str) -> dict:
-    """Headline stats + chart data for the home page (one quarter)."""
-    rows = _fund_rows(conn, quarter)
-    managers = [r for r in rows if r["is_manager"]]
+    """Headline stats + chart data for the home page (one quarter).
 
-    # filer-type mix (all screened filers)
-    by_cat: dict[str, dict] = {}
-    for r in rows:
-        c = by_cat.setdefault(r["category"], {
-            "category": r["category"], "emoji": r["emoji"],
-            "label": r["category"], "count": 0, "aum_usd": 0.0})
-        c["count"] += 1
-        c["aum_usd"] += r["aum_usd"]
-    mix = sorted(by_cat.values(), key=lambda d: d["count"], reverse=True)
-    _bars(mix, "count")
+    Every universe member is presented as an investment manager: firm type
+    remains a database fact (used by the screen and kept in the CSV export),
+    but the site doesn't split members by it — the owner's call.
+    """
+    rows = _fund_rows(conn, quarter)
+    managers = rows  # all members are presented as managers
 
     # Bins cover EVERY member, including lapsed ones currently below the $2B
     # floor or above 30 names — the histograms must sum to the universe size.
@@ -212,10 +206,9 @@ def universe(conn, quarter: str) -> dict:
         for row in mh.itertuples(index=False)
     ], "num_funds")
 
-    # "Highest single-position conviction" should showcase real managers, not
-    # single-stake filers (an operating company holding one name is trivially
-    # 100%). Pull a wide list, keep investment managers holding >= 2 companies,
-    # then take the top 12 by concentration.
+    # "Highest single-position conviction": every member counts (they're all
+    # presented as managers); just skip near-single-stake books, where a 100%
+    # top position is trivial rather than a conviction signal.
     tc = insights.top_concentration(conn, quarter, limit=150)
     top_conc = [
         {"manager_name": row.manager_name, "top_holding": row.top_holding,
@@ -224,7 +217,6 @@ def universe(conn, quarter: str) -> dict:
          "cik": str(_cik_for(conn, row.manager_name, quarter))}
         for row in tc.itertuples(index=False)
         if int(row.num_issuers) >= 2
-        and classify.classify_manager(row.manager_name) == classify.MANAGER
     ][:12]
 
     # New members this quarter — same definition as the This-quarter page
@@ -249,7 +241,6 @@ def universe(conn, quarter: str) -> dict:
         "manager_aum": usd_headline(mgr_aum),
         "median_issuers": med_iss,
         "total_positions": sum(r["num_positions"] for r in rows),
-        "type_mix": mix,
         "aum_hist": aum_hist,
         "issuer_hist": iss_hist,
         "most_held": most_held,
