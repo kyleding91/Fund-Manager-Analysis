@@ -66,16 +66,16 @@ S: dict[str, dict[str, str]] = {
     },
 
     # ---- Overview (index) --------------------------------------------------
-    "home.title": {"en": "{site} — value-oriented 13F managers, {q}", "zh": "{site} — 价值型 13F 管理人,{q}"},
+    "home.title": {"en": "Value Flow — Where value-oriented capital is invested", "zh": "Value Flow — 价值资本流向分析"},
     "home.eyebrow": {"en": "SEC 13F screen", "zh": "SEC 13F 筛选"},
     "home.h1": {"en": "Where concentrated, value-oriented capital is invested", "zh": "集中持仓的价值型资本流向何处"},
     "home.lede": {
         "en": 'A curated universe of value-investing managers reporting more than $2&nbsp;billion in concentrated U.S. equity portfolios. See the <a href="methodology.html">methodology</a>. Built automatically from public SEC filings.',
         "zh": '一份精选的价值投资管理人名单:其披露的美股集中组合规模超过 $2B。见<a href="methodology.html">方法论</a>。全站由公开 SEC 文件自动生成。',
     },
-    # Share-card (og:title) for the homepage. Owner's call: the WeChat share
-    # shows the Chinese headline from both language trees.
-    "og.home": {"en": "Value Flow — 集中持仓的价值型资本流向", "zh": "Value Flow — 集中持仓的价值型资本流向"},
+    # Share-card (og:title) for the homepage — matches the page <title>, which
+    # is what WeChat actually displays in link previews.
+    "og.home": {"en": "Value Flow — Where value-oriented capital is invested", "zh": "Value Flow — 价值资本流向分析"},
     "home.kpi.managers": {"en": "Investment managers", "zh": "投资管理人"},
     "home.kpi.managers_sub": {"en": "members of the screened universe", "zh": "筛选名单成员数"},
     "home.kpi.assets": {"en": "Combined assets", "zh": "合计资产"},
